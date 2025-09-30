@@ -133,6 +133,15 @@ class ColabRuntime:
             "fuse",
         ]
         
+        # Fix any broken packages first
+        print("   Fixing broken packages...")
+        subprocess.run(
+            ["apt-get", "-f", "install", "-y"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
         # Update package list
         print("   Updating package list...")
         result = subprocess.run(
@@ -144,22 +153,41 @@ class ColabRuntime:
         if result.returncode != 0:
             print(f"   Warning: apt-get update had issues: {result.stderr[:200]}")
         
-        # Install packages
+        # Install packages one by one for better error handling
         print("   Installing SSH server and dependencies...")
-        result = subprocess.run(
-            ["apt-get", "install", "-qq", "-y"] + packages,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to install packages: {result.stderr[:500]}")
+        for package in packages:
+            result = subprocess.run(
+                ["apt-get", "install", "-qq", "-y", "--fix-missing", package],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            if result.returncode != 0:
+                # Try with dpkg configure first
+                subprocess.run(
+                    ["dpkg", "--configure", "-a"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+                # Retry installation
+                result = subprocess.run(
+                    ["apt-get", "install", "-qq", "-y", "--fix-broken", package],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                if result.returncode != 0:
+                    print(f"   Warning: Failed to install {package}: {result.stderr[:200]}")
         
         # Verify sshd exists
         if not os.path.exists("/usr/sbin/sshd"):
             raise FileNotFoundError(
-                "SSH server not found after installation. "
-                "Try running: !apt-get update && !apt-get install -y openssh-server"
+                "SSH server not found after installation.\n"
+                "Please run these commands manually in a Colab cell:\n"
+                "  !apt-get update\n"
+                "  !dpkg --configure -a\n"
+                "  !apt-get install -y openssh-server\n"
+                "Then retry the setup."
             )
         
         # Install pyngrok if not already installed
