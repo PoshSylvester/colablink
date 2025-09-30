@@ -62,7 +62,7 @@ brew install hudochenkov/sshpass/sshpass
 
 ### Step 2: Setup Colab Runtime
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yourusername/colablink/blob/main/colab_setup.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PoshSylvester/colablink/blob/main/colab_setup.ipynb)
 
 Open Google Colab: https://colab.research.google.com/
 

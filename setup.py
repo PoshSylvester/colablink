@@ -15,7 +15,7 @@ setup(
     long_description_content_type="text/markdown",
     author="ColabLink Contributors",
     license="MIT",
-    url="https://github.com/yourusername/colablink",
+    url="https://github.com/PoshSylvester/colablink",
     packages=find_packages(),
     python_requires=">=3.6",
     install_requires=[
