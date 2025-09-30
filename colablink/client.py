@@ -107,7 +107,10 @@ class LocalClient:
         
         # Build SSH command
         ssh_cmd = self._build_ssh_command()
-        full_command = f"{ssh_cmd} 'cd {remote_cwd} && {command}'"
+        
+        # Set up environment for CUDA/GPU access
+        env_setup = "export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:$LD_LIBRARY_PATH && export PATH=/usr/local/cuda/bin:$PATH"
+        full_command = f"{ssh_cmd} '{env_setup} && cd {remote_cwd} && {command}'"
         
         if stream_output:
             # Execute with real-time output streaming

@@ -226,6 +226,25 @@ PubkeyAuthentication yes
         # Create necessary directories
         os.makedirs("/var/run/sshd", exist_ok=True)
         
+        # Setup environment for SSH sessions (GPU/CUDA access)
+        print("   Configuring environment for GPU access...")
+        env_setup = """
+# ColabLink environment setup
+export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH
+export PATH=/usr/local/cuda/bin:$PATH
+export CUDA_HOME=/usr/local/cuda
+"""
+        try:
+            # Add to root's .bashrc
+            with open("/root/.bashrc", "a") as f:
+                f.write(env_setup)
+            
+            # Also create .bash_profile that sources .bashrc
+            with open("/root/.bash_profile", "w") as f:
+                f.write("if [ -f ~/.bashrc ]; then source ~/.bashrc; fi\n")
+        except Exception as e:
+            print(f"   Warning: Could not setup environment: {e}")
+        
         # Start SSH service
         print("   Starting SSH daemon...")
         result = subprocess.run(
