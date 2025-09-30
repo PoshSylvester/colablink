@@ -134,18 +134,33 @@ class ColabRuntime:
         ]
         
         # Update package list
-        subprocess.run(
+        print("   Updating package list...")
+        result = subprocess.run(
             ["apt-get", "update", "-qq"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
+        if result.returncode != 0:
+            print(f"   Warning: apt-get update had issues: {result.stderr[:200]}")
         
         # Install packages
-        subprocess.run(
+        print("   Installing SSH server and dependencies...")
+        result = subprocess.run(
             ["apt-get", "install", "-qq", "-y"] + packages,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to install packages: {result.stderr[:500]}")
+        
+        # Verify sshd exists
+        if not os.path.exists("/usr/sbin/sshd"):
+            raise FileNotFoundError(
+                "SSH server not found after installation. "
+                "Try running: !apt-get update && !apt-get install -y openssh-server"
+            )
         
         # Install pyngrok if not already installed
         subprocess.run(
@@ -153,30 +168,45 @@ class ColabRuntime:
             stdout=subprocess.DEVNULL
         )
         
-        print("   Dependencies installed")
+        print("   Dependencies installed successfully")
     
     def _setup_ssh_server(self):
         """Configure and start SSH server."""
         # Set root password
-        subprocess.run(
+        print("   Setting root password...")
+        result = subprocess.run(
             ["bash", "-c", f"echo 'root:{self.password}' | chpasswd"],
-            check=True
+            capture_output=True,
+            text=True
         )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to set password: {result.stderr}")
         
         # Configure SSH
+        print("   Configuring SSH server...")
         ssh_config = """
 PermitRootLogin yes
 PasswordAuthentication yes
 PubkeyAuthentication yes
 """
-        with open("/etc/ssh/sshd_config", "a") as f:
-            f.write(ssh_config)
+        try:
+            with open("/etc/ssh/sshd_config", "a") as f:
+                f.write(ssh_config)
+        except Exception as e:
+            raise RuntimeError(f"Failed to configure SSH: {e}")
         
         # Create necessary directories
         os.makedirs("/var/run/sshd", exist_ok=True)
         
         # Start SSH service
-        subprocess.run(["/usr/sbin/sshd"], check=True)
+        print("   Starting SSH daemon...")
+        result = subprocess.run(
+            ["/usr/sbin/sshd"],
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to start SSH server: {result.stderr}")
         
         print("   SSH server running on port 22")
     
