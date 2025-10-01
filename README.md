@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
 ![python version](https://img.shields.io/badge/python-3.6%2B-blue?logo=python)
-[![PyPI version](https://img.shields.io/badge/pypi-v1.2.0-blue)](https://pypi.org/project/colablink/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.1.0-blue)](https://pypi.org/project/colablink/)
 
 Connect your local IDE to Google Colab's GPU runtime. Work entirely locally with your files and terminal while executing on Colab's powerful GPUs.
 
@@ -325,20 +325,29 @@ runtime = ColabRuntime(
 
 ## Changelog
 
-### [1.2.0] - 2025-10-01
-
-- Automatic bidirectional file sync via SSHFS
-- `colablink download` command for pulling files
-- Auto-detection of files vs directories
-- Real-time unbuffered output streaming
-- Fixed jagged output display
-- Comprehensive command documentation
-
 ### [1.1.0] - 2025-10-01
 
-- `colablink upload` and `colablink sync` commands
-- Smart file exclusions (.git, __pycache__, etc.)
-- Tar-based efficient compression
+**File Synchronization:**
+- Automatic bidirectional file sync via SSHFS
+- `colablink upload` command for pushing files/directories to Colab
+- `colablink download` command for pulling files/directories from Colab
+- `colablink sync` command for syncing entire directories
+- Auto-detection of files vs directories (smart recursive mode)
+- Smart file exclusions (.git, __pycache__, venv, node_modules, etc.)
+- Tar-based efficient compression for sync
+
+**Output & Streaming:**
+- Real-time unbuffered output streaming
+- Fixed jagged output display
+- Python unbuffered mode for immediate output
+- Proper terminal handling
+
+**User Experience:**
+- Automatic dependency checking on first run
+- Platform-specific installation guidance
+- Comprehensive command documentation
+- Streamlined README (67% smaller, cleaner)
+- Text-only output (no glyphs)
 
 ### [1.0.0] - 2025-09-30
 
@@ -347,6 +356,8 @@ runtime = ColabRuntime(
 - Real-time command execution
 - GPU environment auto-configuration
 - Port forwarding support
+- Interactive shell mode
+- Connection status monitoring
 
 [Full changelog →](https://github.com/PoshSylvester/colablink/releases)
 
@@ -373,5 +384,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Made for developers who want local development with cloud GPU power**
 
-**Version:** 1.2.0 | **Status:** Stable | **License:** MIT
+**Version:** 1.1.0 | **Status:** Stable | **License:** MIT
 
