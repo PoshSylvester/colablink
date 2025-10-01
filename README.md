@@ -264,7 +264,9 @@ colablink disconnect
 
 If automatic sync is unavailable or disabled, ColabLink provides manual file management commands:
 
-#### Download Files from Colab
+#### Download Files and Directories from Colab
+
+All download commands automatically detect whether the source is a file or directory:
 
 ```bash
 # Download a single file
@@ -273,9 +275,34 @@ colablink download /content/model.pt
 # Download to specific location
 colablink download /content/model.pt --destination ./models/
 
-# Download entire directory
-colablink download /content/output/ --recursive
+# Download entire directory (auto-detected)
+colablink download /content/output/
+colablink download /content/data/
+
+# Force recursive mode
+colablink download /content/results/ --recursive
 ```
+
+**Smart Detection**: ColabLink automatically detects directories and uses recursive mode when needed.
+
+#### Upload Files and Directories to Colab
+
+Upload commands automatically detect local files vs directories:
+
+```bash
+# Upload a single file
+colablink upload train.py
+
+# Upload entire directory (auto-detected)
+colablink upload data/
+colablink upload myproject/
+
+# Upload with custom destination
+colablink upload model.py --destination /content/models/
+colablink upload data/ --destination /content/datasets/
+```
+
+**Auto-Recursive**: Directories are automatically uploaded recursively - no flags needed!
 
 #### Sync Entire Directory
 
@@ -290,23 +317,7 @@ colablink sync --directory /path/to/project
 This will:
 - Upload your entire project directory to `/content/YourProjectName/` on Colab
 - Automatically exclude common files (`.git`, `__pycache__`, `node_modules`, etc.)
-- Use efficient compression for faster transfer
-
-#### Upload Specific Files or Directories
-
-```bash
-# Upload a single file
-colablink upload train.py
-
-# Upload a directory
-colablink upload data/
-
-# Upload with custom destination
-colablink upload model.py --destination /content/models/
-
-# Upload directory recursively
-colablink upload myproject/ --recursive
-```
+- Use efficient tar compression for faster transfer
 
 #### After Syncing
 

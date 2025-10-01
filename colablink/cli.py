@@ -23,9 +23,11 @@ Examples:
   # Files generated on Colab appear automatically in ~/.colablink/colab_workspace/
   
   # Manual file management (if auto-sync disabled):
-  colablink upload train.py        # Push file to Colab
-  colablink download /content/model.pt  # Pull file from Colab
-  colablink sync                   # Push entire directory
+  colablink upload train.py              # Push file to Colab
+  colablink upload data/                 # Push directory (auto-recursive)
+  colablink download /content/model.pt   # Pull file from Colab
+  colablink download /content/output/    # Pull directory (auto-detected)
+  colablink sync                         # Push entire directory
   
   # Execute a Python script on Colab GPU
   colablink exec python train.py

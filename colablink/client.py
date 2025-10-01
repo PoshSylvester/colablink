@@ -300,16 +300,23 @@ class LocalClient:
             "-P", str(self.config['port']),
         ])
         
+        # Check if source is a directory
+        is_directory = os.path.isdir(source_path)
+        
         # Add recursive flag if needed
-        if recursive or os.path.isdir(source_path):
+        if recursive or is_directory:
             scp_cmd.append("-r")
         
         # Add source and destination
         scp_cmd.append(source_path)
         scp_cmd.append(f"root@{self.config['host']}:{destination}")
         
-        # Execute upload
-        print(f"Uploading {source} to Colab:{destination}...")
+        # Execute upload with appropriate messaging
+        if is_directory:
+            print(f"Uploading directory {source} to Colab:{destination}...")
+        else:
+            print(f"Uploading file {source} to Colab:{destination}...")
+            
         result = subprocess.run(
             " ".join(scp_cmd),
             shell=True,
@@ -318,10 +325,13 @@ class LocalClient:
         )
         
         if result.returncode == 0:
-            print(f"Upload successful: {destination}")
+            if is_directory:
+                print(f"✓ Directory uploaded successfully: {destination}")
+            else:
+                print(f"✓ File uploaded successfully: {destination}")
             return 0
         else:
-            print(f"Upload failed: {result.stderr}")
+            print(f"✗ Upload failed: {result.stderr}")
             return 1
     
     def download(self, source: str, destination: Optional[str] = None, recursive: bool = False):
@@ -331,13 +341,20 @@ class LocalClient:
         Args:
             source: Remote file or directory path on Colab
             destination: Local destination path (default: current directory)
-            recursive: Whether to download recursively for directories
+            recursive: Whether to download recursively for directories (auto-detected)
         """
         self._load_config()
         
         if not self.config:
             print("Error: Not connected. Run 'colablink init' first.")
             return 1
+        
+        # Auto-detect if source is a directory (ends with / or common directory indicators)
+        is_likely_directory = (
+            source.endswith('/') or 
+            '.' not in os.path.basename(source) or
+            recursive
+        )
         
         # Determine destination
         if destination is None:
@@ -355,16 +372,18 @@ class LocalClient:
             "-P", str(self.config['port']),
         ])
         
-        # Add recursive flag if needed
-        if recursive:
+        # Add recursive flag if likely a directory
+        if is_likely_directory:
             scp_cmd.append("-r")
+            print(f"Downloading directory Colab:{source} to {destination}...")
+        else:
+            print(f"Downloading file Colab:{source} to {destination}...")
         
         # Add source and destination
         scp_cmd.append(f"root@{self.config['host']}:{source}")
         scp_cmd.append(destination)
         
         # Execute download
-        print(f"Downloading Colab:{source} to {destination}...")
         result = subprocess.run(
             " ".join(scp_cmd),
             shell=True,
@@ -373,10 +392,18 @@ class LocalClient:
         )
         
         if result.returncode == 0:
-            print(f"Download successful: {destination}")
+            if is_likely_directory:
+                print(f"✓ Directory downloaded successfully to: {destination}")
+            else:
+                print(f"✓ File downloaded successfully to: {destination}")
             return 0
         else:
-            print(f"Download failed: {result.stderr}")
+            # If it failed and we didn't use recursive, suggest trying with recursive
+            if not is_likely_directory and "not a regular file" in result.stderr.lower():
+                print(f"Note: '{source}' appears to be a directory.")
+                print(f"Retrying with recursive mode...")
+                return self.download(source, destination, recursive=True)
+            print(f"✗ Download failed: {result.stderr}")
             return 1
     
     def sync(self, directory: Optional[str] = None, exclude: Optional[List[str]] = None):
