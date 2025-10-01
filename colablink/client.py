@@ -516,8 +516,6 @@ Host colablink
             "-o", "reconnect",
             "-o", "ServerAliveInterval=15",
             "-o", "ServerAliveCountMax=3",
-            "-o", "allow_other",
-            "-o", "default_permissions",
         ]
         
         try:
