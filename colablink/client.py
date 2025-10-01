@@ -133,16 +133,16 @@ class LocalClient:
         # Map local path to Colab path
         remote_cwd = self._map_local_to_remote(cwd)
         
-        # Build SSH command with TTY for real-time streaming
-        ssh_cmd = self._build_ssh_command(force_tty=stream_output)
+        # Build SSH command (without TTY to avoid output buffering issues)
+        ssh_cmd = self._build_ssh_command(force_tty=False)
         
-        # Get terminal dimensions to prevent jagged output
-        import shutil
-        term_width = shutil.get_terminal_size().columns
-        term_height = shutil.get_terminal_size().lines
+        # Set up environment for CUDA/GPU access with Python unbuffered mode
+        env_setup = "export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:$LD_LIBRARY_PATH && export PATH=/usr/local/cuda/bin:$PATH && export PYTHONUNBUFFERED=1"
         
-        # Set up environment for CUDA/GPU access and terminal settings
-        env_setup = f"export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:$LD_LIBRARY_PATH && export PATH=/usr/local/cuda/bin:$PATH && export COLUMNS={term_width} && export LINES={term_height} && stty cols {term_width} rows {term_height} 2>/dev/null || true"
+        # Wrap Python commands with -u flag for unbuffered output
+        if 'python' in command.lower() and '-u' not in command:
+            command = command.replace('python3', 'python3 -u').replace('python', 'python -u')
+        
         full_command = f"{ssh_cmd} '{env_setup} && cd {remote_cwd} && {command}'"
         
         if stream_output:
