@@ -133,8 +133,8 @@ class LocalClient:
         # Map local path to Colab path
         remote_cwd = self._map_local_to_remote(cwd)
         
-        # Build SSH command
-        ssh_cmd = self._build_ssh_command()
+        # Build SSH command with TTY for real-time streaming
+        ssh_cmd = self._build_ssh_command(force_tty=stream_output)
         
         # Set up environment for CUDA/GPU access
         env_setup = "export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:$LD_LIBRARY_PATH && export PATH=/usr/local/cuda/bin:$PATH"
@@ -142,41 +142,30 @@ class LocalClient:
         
         if stream_output:
             # Execute with real-time output streaming
+            # Use unbuffered mode and force pseudo-terminal for immediate output
             process = subprocess.Popen(
                 full_command,
                 shell=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # Merge stderr into stdout for proper ordering
                 universal_newlines=True,
-                bufsize=1
+                bufsize=0  # Unbuffered
             )
             
-            # Stream stdout and stderr
-            import threading
-            
-            def stream_output_thread(pipe, output_file):
-                for line in pipe:
-                    print(line, end='', file=output_file, flush=True)
-            
-            stdout_thread = threading.Thread(
-                target=stream_output_thread,
-                args=(process.stdout, sys.stdout)
-            )
-            stderr_thread = threading.Thread(
-                target=stream_output_thread,
-                args=(process.stderr, sys.stderr)
-            )
-            
-            stdout_thread.start()
-            stderr_thread.start()
-            
-            # Wait for completion
-            returncode = process.wait()
-            
-            stdout_thread.join()
-            stderr_thread.join()
-            
-            return returncode
+            # Stream output line by line in real-time
+            try:
+                for line in iter(process.stdout.readline, ''):
+                    if line:
+                        print(line, end='', flush=True)
+                
+                # Wait for process to complete
+                returncode = process.wait()
+                
+                return returncode
+            except KeyboardInterrupt:
+                process.terminate()
+                process.wait()
+                return 130  # Standard exit code for SIGINT
         else:
             # Execute without streaming
             result = subprocess.run(full_command, shell=True)
@@ -693,7 +682,8 @@ Host colablink
     def _build_ssh_command(
         self,
         interactive: bool = False,
-        port_forward: Optional[str] = None
+        port_forward: Optional[str] = None,
+        force_tty: bool = False
     ) -> str:
         """Build SSH command with proper options."""
         cmd_parts = ["sshpass", "-p", f"'{self.config['password']}'", "ssh"]
@@ -711,9 +701,11 @@ Host colablink
         if port_forward:
             cmd_parts.extend(["-L", port_forward])
         
-        # Interactive mode
+        # Interactive mode or force TTY for real-time output
         if interactive:
             cmd_parts.append("-t")
+        elif force_tty:
+            cmd_parts.append("-tt")  # Force TTY allocation for unbuffered output
         
         # Host
         cmd_parts.append(f"root@{self.config['host']}")
