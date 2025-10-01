@@ -136,8 +136,13 @@ class LocalClient:
         # Build SSH command with TTY for real-time streaming
         ssh_cmd = self._build_ssh_command(force_tty=stream_output)
         
-        # Set up environment for CUDA/GPU access
-        env_setup = "export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:$LD_LIBRARY_PATH && export PATH=/usr/local/cuda/bin:$PATH"
+        # Get terminal dimensions to prevent jagged output
+        import shutil
+        term_width = shutil.get_terminal_size().columns
+        term_height = shutil.get_terminal_size().lines
+        
+        # Set up environment for CUDA/GPU access and terminal settings
+        env_setup = f"export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:$LD_LIBRARY_PATH && export PATH=/usr/local/cuda/bin:$PATH && export COLUMNS={term_width} && export LINES={term_height} && stty cols {term_width} rows {term_height} 2>/dev/null || true"
         full_command = f"{ssh_cmd} '{env_setup} && cd {remote_cwd} && {command}'"
         
         if stream_output:
