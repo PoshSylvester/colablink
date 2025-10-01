@@ -29,6 +29,7 @@ Your Local Computer          →  Command  →     Google Colab
 - [Quick Start](#quick-start)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Command Reference](#command-reference)
 - [Examples](#examples)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
@@ -465,6 +466,190 @@ model.save('./models/trained_model.pt')
 ```
 
 Files are transferred on-demand via SSH.
+
+---
+
+## Command Reference
+
+ColabLink provides a comprehensive CLI for managing your Colab connection. Here's the complete reference:
+
+### `colablink init`
+
+Initialize connection to Colab runtime.
+
+```bash
+colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "xxx", "mount_point": "/mnt/local"}'
+```
+
+**What it does:**
+- Establishes SSH connection to Colab
+- Sets up automatic bidirectional file sync (if sshfs available)
+- Tests connection and displays status
+- Saves configuration to `~/.colablink/config.json`
+
+### `colablink exec`
+
+Execute commands on Colab GPU with real-time output streaming.
+
+```bash
+colablink exec <command>
+
+# Examples:
+colablink exec nvidia-smi
+colablink exec python train.py
+colablink exec "pip install torch torchvision"
+colablink exec "for i in {1..5}; do echo Line \$i; done"
+```
+
+**Features:**
+- Real-time output streaming (no buffering)
+- Automatic GPU/CUDA environment setup
+- Python unbuffered mode for immediate output
+- Proper terminal width handling
+- Keyboard interrupt support (Ctrl+C)
+
+### `colablink shell`
+
+Start an interactive SSH shell on Colab.
+
+```bash
+colablink shell
+```
+
+**What it does:**
+- Opens interactive bash session on Colab
+- Full terminal access with GPU/CUDA environment
+- Exit with `exit` or Ctrl+D
+- All files accessible in Colab
+
+### `colablink upload`
+
+Upload files or directories to Colab.
+
+```bash
+colablink upload <source> [--destination DEST] [--recursive]
+
+# Examples:
+colablink upload train.py                          # Upload single file
+colablink upload data/                             # Upload directory (auto-recursive)
+colablink upload model.py -d /content/models/      # Custom destination
+colablink upload project/ -r                       # Force recursive
+```
+
+**Options:**
+- `source`: Local file or directory path
+- `--destination, -d`: Remote destination path (default: `/content/`)
+- `--recursive, -r`: Force recursive mode (auto-detected for directories)
+
+**Features:**
+- Automatic directory detection
+- Smart recursive mode
+- Progress indication
+- ✓/✗ success/failure symbols
+
+### `colablink download`
+
+Download files or directories from Colab to local machine.
+
+```bash
+colablink download <source> [--destination DEST] [--recursive]
+
+# Examples:
+colablink download /content/model.pt               # Download single file
+colablink download /content/output/                # Download directory (auto-detected)
+colablink download /content/results/ -d ./results/ # Custom destination
+colablink download /content/data/ -r               # Force recursive
+```
+
+**Options:**
+- `source`: Remote file or directory path on Colab
+- `--destination, -d`: Local destination path (default: current directory)
+- `--recursive, -r`: Force recursive mode (auto-detected for directories)
+
+**Features:**
+- Automatic directory detection (by trailing `/` or no extension)
+- Smart retry if directory detected
+- Progress indication
+- ✓/✗ success/failure symbols
+
+### `colablink sync`
+
+Sync entire directory to Colab with smart exclusions.
+
+```bash
+colablink sync [--directory DIR]
+
+# Examples:
+colablink sync                    # Sync current directory
+colablink sync -d /path/to/project  # Sync specific directory
+```
+
+**Options:**
+- `--directory, -d`: Directory to sync (default: current directory)
+
+**Features:**
+- Efficient tar-based compression
+- Automatic exclusions: `.git`, `__pycache__`, `node_modules`, `venv`, `*.pyc`, etc.
+- Uploads to `/content/DirectoryName/` on Colab
+- Fast transfer of entire projects
+
+**Auto-excluded patterns:**
+- `__pycache__`, `*.pyc`
+- `.git`, `.gitignore`
+- `venv`, `env`, `.venv`
+- `node_modules`
+- `*.egg-info`, `dist`, `build`
+
+### `colablink status`
+
+Check connection status and GPU information.
+
+```bash
+colablink status
+```
+
+**Displays:**
+- Connection status (Connected/Disconnected)
+- Host and port information
+- GPU name, total memory, and current usage
+- Quick health check
+
+### `colablink forward`
+
+Forward ports from Colab to local machine.
+
+```bash
+colablink forward <port> [--local-port LOCAL_PORT]
+
+# Examples:
+colablink forward 8888              # Jupyter (8888 -> localhost:8888)
+colablink forward 6006              # TensorBoard (6006 -> localhost:6006)
+colablink forward 8080 --local-port 3000  # Custom mapping
+```
+
+**Options:**
+- `port`: Remote port on Colab to forward
+- `--local-port`: Local port (default: same as remote port)
+
+**Use cases:**
+- Jupyter notebooks: `forward 8888`
+- TensorBoard: `forward 6006`
+- Web apps: `forward 5000`
+- Any TCP service running on Colab
+
+### `colablink disconnect`
+
+Disconnect from Colab runtime and cleanup.
+
+```bash
+colablink disconnect
+```
+
+**What it does:**
+- Closes all port forwards
+- Unmounts SSHFS (if mounted)
+- Cleans up resources
+- Keeps configuration for reconnection
 
 ---
 
