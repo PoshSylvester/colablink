@@ -111,6 +111,7 @@ Thumbs.db
 
 # Project specific
 .colabconnect/
+colab-workspace/
 *.pt
 *.pth
 *.h5

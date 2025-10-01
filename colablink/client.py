@@ -22,20 +22,27 @@ from typing import Optional, Dict, List
 class LocalClient:
     """Client for connecting local machine to Colab runtime."""
     
-    def __init__(self, config_file: Optional[str] = None, auto_sync: bool = True):
+    def __init__(self, config_file: Optional[str] = None, auto_sync: bool = True, local_mount_dir: Optional[str] = None):
         """
         Initialize local client.
         
         Args:
             config_file: Path to config file (default: ~/.colablink/config.json)
             auto_sync: Enable automatic bidirectional file sync (default: True)
+            local_mount_dir: Directory to mount Colab files (default: ./colab-workspace)
         """
         self.config_file = config_file or os.path.expanduser("~/.colablink/config.json")
         self.config_dir = os.path.dirname(self.config_file)
         self.config: Dict = {}
         self.ssh_config_file = os.path.join(self.config_dir, "ssh_config")
         self.port_forwards: List[subprocess.Popen] = []
-        self.local_mount_point = os.path.join(self.config_dir, "colab_workspace")
+        
+        # Default local mount to ./colab-workspace in current directory
+        if local_mount_dir is None:
+            self.local_mount_point = os.path.join(os.getcwd(), "colab-workspace")
+        else:
+            self.local_mount_point = os.path.abspath(local_mount_dir)
+        
         self.sync_process: Optional[subprocess.Popen] = None
         self.auto_sync = auto_sync
         
@@ -44,15 +51,16 @@ class LocalClient:
         Initialize connection to Colab runtime.
         
         Args:
-            connection_info: Dict with host, port, password, mount_point
+            connection_info: Dict with host, port, password
         """
         print("Initializing connection to Colab runtime...")
         
         # Check dependencies
         self._check_dependencies()
         
-        # Create config directory
+        # Create config directory and local mount directory
         os.makedirs(self.config_dir, exist_ok=True)
+        os.makedirs(self.local_mount_point, exist_ok=True)
         
         # Save configuration
         self.config = connection_info
@@ -97,7 +105,7 @@ class LocalClient:
                 print(f"  - colablink sync             - Push entire directory")
                 print("\n" + "="*70)
             
-            print("\nYou can now execute commands on Colab GPU:")
+            print("\nYou can now execute commands on Colab runtime:")
             print("  colablink exec python train.py")
             print("  colablink exec nvidia-smi")
             print("\nOr start a shell with transparent execution:")
@@ -139,8 +147,15 @@ class LocalClient:
         # Build SSH command (without TTY to avoid output buffering issues)
         ssh_cmd = self._build_ssh_command(force_tty=False)
         
-        # Set up environment for CUDA/GPU access with Python unbuffered mode
-        env_setup = "export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:$LD_LIBRARY_PATH && export PATH=/usr/local/cuda/bin:$PATH && export PYTHONUNBUFFERED=1"
+        # Set up environment with Python unbuffered mode
+        # Add CUDA/GPU paths if they exist (for GPU runtimes)
+        env_setup = (
+            "export PYTHONUNBUFFERED=1 && "
+            "if [ -d /usr/lib64-nvidia ]; then "
+            "export LD_LIBRARY_PATH=/usr/lib64-nvidia:/usr/local/cuda/lib64:$LD_LIBRARY_PATH; "
+            "export PATH=/usr/local/cuda/bin:$PATH; "
+            "fi"
+        )
         
         # Wrap Python commands with -u flag for unbuffered output
         if 'python' in command.lower() and '-u' not in command:
@@ -191,7 +206,6 @@ class LocalClient:
             return 1
         
         print("Starting interactive shell on Colab runtime...")
-        print(f"Your local files are accessible at: {self.config['mount_point']}")
         print("Type 'exit' to return to local shell.\n")
         
         # Start interactive SSH session

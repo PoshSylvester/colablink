@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
 ![python version](https://img.shields.io/badge/python-3.6%2B-blue?logo=python)
-[![PyPI version](https://img.shields.io/badge/pypi-v1.1.0-blue)](https://pypi.org/project/colablink/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.0.0-blue)](https://pypi.org/project/colablink/)
 
 Connect your local IDE to Google Colab's GPU runtime. Work entirely locally with your files and terminal while executing on Colab's powerful GPUs.
 
@@ -44,19 +44,25 @@ runtime.keep_alive()
 
 ### 3. Connect & Use
 
-Copy the connection command from Colab output:
+Copy the connection command from Colab output and run it:
 
 ```bash
-colablink init '{"host": "...", "port": "...", "password": "...", "mount_point": "/mnt/local"}'
+colablink init '{"host": "...", "port": "...", "password": "..."}'
 
-# Your files sync automatically! Now run commands:
+# Optional: Specify custom mount directory
+colablink init '{"host": "...", "port": "...", "password": "..."}' --mount-dir /custom/path
+```
+
+Your files now sync automatically! Colab files appear in `./colab-workspace/` by default.
+
+```bash
+# Run commands on Colab GPU:
 colablink exec nvidia-smi
 colablink exec python train.py
 
-# Files generated on Colab appear in: ~/.colablink/colab_workspace/
+# Generated files appear in: ./colab-workspace/
+ls colab-workspace/  # See your models, outputs, etc.
 ```
-
-That's it! You're now running code on Colab GPU from your local terminal.
 
 ---
 
@@ -92,10 +98,14 @@ That's it! You're now running code on Colab GPU from your local terminal.
 <summary><b>colablink init</b> - Initialize connection</summary>
 
 ```bash
-colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "xxx", "mount_point": "/mnt/local"}'
+colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "xxx"}'
+
+# With custom mount directory
+colablink init '{"host": "...", "port": "...", "password": "..."}' --mount-dir ./my-colab-files
 ```
 
 Establishes SSH connection, sets up bidirectional file sync, and saves configuration.
+Colab files mount to `./colab-workspace/` by default (customizable with `--mount-dir`).
 
 </details>
 
@@ -165,7 +175,7 @@ Access forwarded services at `http://localhost:PORT`
 When you run `colablink init`, files sync **automatically** in both directions:
 
 - **Local → Colab**: Your local files are accessible on Colab
-- **Colab → Local**: Generated files appear in `~/.colablink/colab_workspace/`
+- **Colab → Local**: Files appear in `./colab-workspace/` (current directory)
 
 No manual commands needed! Works via SSHFS mounting.
 
@@ -192,7 +202,7 @@ colablink sync
 # Train on Colab GPU
 colablink exec python examples/train_mnist.py
 
-# Model saved to ~/.colablink/colab_workspace/mnist_model.pt automatically!
+# Model appears in: ./colab-workspace/mnist_model.pt
 ```
 
 ### Interactive Development
@@ -325,39 +335,34 @@ runtime = ColabRuntime(
 
 ## Changelog
 
-### [1.1.0] - 2025-10-01
+### [1.0.0] - 2025-10-01 (Beta)
+
+**Core Features:**
+- SSH-based connection to Google Colab runtime (GPU or CPU)
+- Real-time command execution with unbuffered output streaming
+- Automatic GPU/CUDA environment configuration
+- Interactive shell mode
+- Connection status monitoring
 
 **File Synchronization:**
 - Automatic bidirectional file sync via SSHFS
-- `colablink upload` command for pushing files/directories to Colab
-- `colablink download` command for pulling files/directories from Colab
-- `colablink sync` command for syncing entire directories
-- Auto-detection of files vs directories (smart recursive mode)
-- Smart file exclusions (.git, __pycache__, venv, node_modules, etc.)
-- Tar-based efficient compression for sync
-
-**Output & Streaming:**
-- Real-time unbuffered output streaming
-- Fixed jagged output display
-- Python unbuffered mode for immediate output
-- Proper terminal handling
+- `colablink upload` - Push files/directories to Colab
+- `colablink download` - Pull files/directories from Colab
+- `colablink sync` - Sync entire directories with smart exclusions
+- Auto-detection of files vs directories
+- Tar-based efficient compression
 
 **User Experience:**
 - Automatic dependency checking on first run
-- Platform-specific installation guidance
-- Comprehensive command documentation
-- Streamlined README (67% smaller, cleaner)
-- Text-only output (no glyphs)
+- Platform-specific installation guidance (Linux/macOS)
+- Configurable local mount directory (default: ./colab-workspace)
+- Comprehensive CLI help with examples
+- Clean text-only output (no glyphs)
 
-### [1.0.0] - 2025-09-30
-
-- Initial release
-- SSH-based connection to Colab
-- Real-time command execution
-- GPU environment auto-configuration
-- Port forwarding support
-- Interactive shell mode
-- Connection status monitoring
+**Utilities:**
+- Port forwarding for Jupyter, TensorBoard, etc.
+- VS Code Remote-SSH integration
+- Python API for programmatic use
 
 [Full changelog →](https://github.com/PoshSylvester/colablink/releases)
 
@@ -384,5 +389,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Made for developers who want local development with cloud GPU power**
 
-**Version:** 1.1.0 | **Status:** Stable | **License:** MIT
+**Version:** 1.0.0 | **Status:** Beta | **License:** MIT
 

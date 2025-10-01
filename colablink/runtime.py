@@ -19,18 +19,16 @@ from pathlib import Path
 class ColabRuntime:
     """Sets up Colab runtime to accept connections from local machine."""
     
-    def __init__(self, password=None, ngrok_token=None, mount_point="/mnt/local"):
+    def __init__(self, password=None, ngrok_token=None):
         """
         Initialize Colab runtime.
         
         Args:
             password: SSH password for connection (required)
             ngrok_token: ngrok authtoken for tunnel creation (optional but recommended)
-            mount_point: Where to mount local filesystem on Colab
         """
         self.password = password or self._generate_password()
         self.ngrok_token = ngrok_token
-        self.mount_point = mount_point
         self.connection_info = {}
         self.ssh_port = 22
         self.sshfs_port = 2222
@@ -58,23 +56,19 @@ class ColabRuntime:
             self._display_gpu_info()
             
             # Install dependencies
-            print("\n[1/5] Installing dependencies...")
+            print("\n[1/4] Installing dependencies...")
             self._install_dependencies()
             
             # Setup SSH server
-            print("\n[2/5] Configuring SSH server...")
+            print("\n[2/4] Configuring SSH server...")
             self._setup_ssh_server()
             
             # Create ngrok tunnel
-            print("\n[3/5] Creating secure tunnel...")
+            print("\n[3/4] Creating secure tunnel...")
             self._create_tunnel()
             
-            # Setup mount point
-            print("\n[4/5] Preparing filesystem mount point...")
-            self._prepare_mount_point()
-            
             # Display connection info
-            print("\n[5/5] Setup complete!")
+            print("\n[4/4] Setup complete!")
             self._display_connection_info()
             
             # Start keep-alive
@@ -277,16 +271,10 @@ export CUDA_HOME=/usr/local/cuda
         self.connection_info = {
             "host": host,
             "port": port,
-            "password": self.password,
-            "mount_point": self.mount_point
+            "password": self.password
         }
         
         print(f"   Tunnel created: {host}:{port}")
-    
-    def _prepare_mount_point(self):
-        """Create mount point for local filesystem."""
-        os.makedirs(self.mount_point, exist_ok=True)
-        print(f"   Mount point ready: {self.mount_point}")
     
     def _generate_password(self):
         """Generate a random secure password."""
