@@ -102,7 +102,6 @@ class ColabRuntime:
     def _check_colab_environment(self):
         """Check if running in Google Colab."""
         try:
-            import google.colab
             return True
         except ImportError:
             print("\nWarning: Not running in Google Colab environment.")
