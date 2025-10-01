@@ -34,6 +34,8 @@ class LocalClient:
         self.config: Dict = {}
         self.ssh_config_file = os.path.join(self.config_dir, "ssh_config")
         self.port_forwards: List[subprocess.Popen] = []
+        self.local_mount_point = os.path.join(self.config_dir, "colab_workspace")
+        self.sync_process: Optional[subprocess.Popen] = None
         
     def initialize(self, connection_info: Dict):
         """
@@ -59,16 +61,21 @@ class LocalClient:
         if self._test_connection():
             print("Connection successful!")
             
-            # Setup reverse SSHFS
-            print("\nSetting up filesystem access...")
+            # Setup bidirectional file sync
+            print("\nSetting up bidirectional file sync...")
             self._setup_reverse_sshfs()
+            self._setup_local_mount()
             
             print("\n" + "="*70)
             print("READY TO USE!")
             print("="*70)
+            print("\n  Local files → Colab: Synced automatically")
+            print(f"  Colab files → Local: {self.local_mount_point}")
             print("\nYou can now execute commands on Colab GPU:")
             print("  colablink exec python train.py")
             print("  colablink exec nvidia-smi")
+            print("\nFiles generated on Colab will appear in:")
+            print(f"  {self.local_mount_point}/")
             print("\nOr start a shell with transparent execution:")
             print("  colablink shell")
             print("\nOr use VS Code Remote-SSH:")
@@ -467,10 +474,111 @@ Host colablink
         print("   Local files will be accessed on-demand via SSH")
         print(f"   Working directory: {os.getcwd()}")
     
+    def _setup_local_mount(self):
+        """Setup local mount - mount Colab's /content directory locally using SSHFS."""
+        # Check if sshfs is installed
+        result = subprocess.run(
+            ["which", "sshfs"],
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode != 0:
+            print("\n   Warning: sshfs not installed. Bidirectional sync unavailable.")
+            print("   Install with: sudo apt-get install sshfs  (or brew install macfuse sshfs on macOS)")
+            print("   You can still upload files manually with 'colablink upload'")
+            return False
+        
+        # Create local mount point
+        os.makedirs(self.local_mount_point, exist_ok=True)
+        
+        # Check if already mounted
+        result = subprocess.run(
+            ["mountpoint", "-q", self.local_mount_point],
+            capture_output=True
+        )
+        
+        if result.returncode == 0:
+            print(f"   Colab directory already mounted at: {self.local_mount_point}")
+            return True
+        
+        # Mount Colab's /content directory locally
+        print(f"   Mounting Colab workspace to: {self.local_mount_point}")
+        
+        mount_cmd = [
+            "sshfs",
+            f"root@{self.config['host']}:/content",
+            self.local_mount_point,
+            "-p", str(self.config['port']),
+            "-o", f"password_stdin",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "reconnect",
+            "-o", "ServerAliveInterval=15",
+            "-o", "ServerAliveCountMax=3",
+            "-o", "allow_other",
+            "-o", "default_permissions",
+        ]
+        
+        try:
+            process = subprocess.Popen(
+                mount_cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            # Send password
+            stdout, stderr = process.communicate(input=f"{self.config['password']}\n", timeout=10)
+            
+            if process.returncode == 0 or self._verify_mount():
+                print(f"   Colab workspace mounted successfully!")
+                print(f"   Files on Colab will appear in: {self.local_mount_point}/")
+                return True
+            else:
+                print(f"   Warning: Mount failed: {stderr}")
+                print("   You can still upload files manually with 'colablink upload'")
+                return False
+                
+        except subprocess.TimeoutExpired:
+            print("   Warning: Mount timed out")
+            print("   You can still upload files manually with 'colablink upload'")
+            return False
+        except Exception as e:
+            print(f"   Warning: Mount failed: {e}")
+            print("   You can still upload files manually with 'colablink upload'")
+            return False
+    
+    def _verify_mount(self):
+        """Verify that the mount point is actually mounted."""
+        result = subprocess.run(
+            ["mountpoint", "-q", self.local_mount_point],
+            capture_output=True
+        )
+        return result.returncode == 0
+    
     def _unmount_sshfs(self):
         """Unmount SSHFS if mounted."""
-        # In a full implementation, this would unmount the SSHFS
-        pass
+        if not os.path.exists(self.local_mount_point):
+            return
+        
+        # Check if mounted
+        if self._verify_mount():
+            print(f"Unmounting {self.local_mount_point}...")
+            
+            # Try fusermount first (Linux)
+            result = subprocess.run(
+                ["fusermount", "-u", self.local_mount_point],
+                capture_output=True
+            )
+            
+            if result.returncode != 0:
+                # Try umount (macOS/BSD)
+                subprocess.run(
+                    ["umount", self.local_mount_point],
+                    capture_output=True
+                )
     
     def _map_local_to_remote(self, local_path: str) -> str:
         """

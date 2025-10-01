@@ -16,8 +16,9 @@ Your Local Computer          →  Command  →     Google Colab
 ```
 
 **Key Benefits:**
+- **Automatic Bidirectional Sync** - Files sync automatically in both directions via SSHFS
 - **Local Terminal Execution** - Run commands in your local terminal, execute on Colab GPU
-- **Local Files** - All your code and data stay on your local machine
+- **Seamless File Access** - Generated files appear locally instantly, no manual downloads
 - **Real-time Streaming** - See logs and output in real-time as your code runs
 - **GPU Access** - Full access to Colab's Tesla T4/P100/V100 GPUs
 - **IDE Integration** - Works with VS Code, Cursor, PyCharm, or any terminal
@@ -52,13 +53,18 @@ Get started in 5 minutes!
 ```bash
 pip install colablink
 
-# Install sshpass (required for SSH authentication)
+# Install required system dependencies
 # Ubuntu/Debian:
-sudo apt-get install sshpass
+sudo apt-get install sshpass sshfs
 
 # macOS:
 brew install hudochenkov/sshpass/sshpass
+brew install macfuse sshfs
 ```
+
+**What are these for?**
+- `sshpass`: SSH authentication with password
+- `sshfs`: Automatic bidirectional file sync (mount Colab directory locally)
 
 ### Step 2: Setup Colab Runtime
 
@@ -90,12 +96,19 @@ Copy the `colablink init` command from the Colab output and paste it in your loc
 colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "your_password", "mount_point": "/mnt/local"}'
 ```
 
-### Step 4: Sync Your Files to Colab
+### Step 4: Work with Your Files
 
-Sync your project files to Colab so you can execute them:
+**Your files are now automatically synced!**
+
+- **Local → Colab**: Files you create/edit locally are accessible on Colab
+- **Colab → Local**: Files generated on Colab appear in `~/.colablink/colab_workspace/`
+
+No manual sync needed! The connection uses SSHFS for bidirectional file access.
+
+Alternatively, you can manually sync if needed:
 
 ```bash
-# Sync entire current directory
+# Manual sync (optional - only if automatic sync fails)
 colablink sync
 
 # Or upload specific files/directories
@@ -708,6 +721,27 @@ colablink status
 
 ## Changelog
 
+### [1.2.0] - 2025-10-01
+
+#### Added
+
+**Automatic Bidirectional File Sync:**
+- SSHFS-based automatic mounting of Colab directory locally
+- Files generated on Colab appear instantly in `~/.colablink/colab_workspace/`
+- No manual download commands needed
+- Real-time file synchronization in both directions
+- Automatic reconnection on network interruptions
+
+**Improvements:**
+- Seamless workflow - write code locally, see results locally
+- Trained models and outputs automatically available locally
+- Better developer experience with transparent file access
+- Graceful fallback to manual sync if SSHFS unavailable
+
+**Requirements:**
+- Added `sshfs` as optional but recommended dependency
+- Enhanced installation documentation
+
 ### [1.1.0] - 2025-10-01
 
 #### Added
@@ -889,6 +923,6 @@ For issues and questions:
 
 **Made for developers who want local development experience with cloud GPU power**
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Status:** Stable  
 **License:** MIT
