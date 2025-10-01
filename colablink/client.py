@@ -48,6 +48,9 @@ class LocalClient:
         """
         print("Initializing connection to Colab runtime...")
         
+        # Check dependencies
+        self._check_dependencies()
+        
         # Create config directory
         os.makedirs(self.config_dir, exist_ok=True)
         
@@ -652,6 +655,57 @@ Host colablink
             capture_output=True
         )
         return result.returncode == 0
+    
+    def _check_dependencies(self):
+        """Check for required system dependencies and provide installation guidance."""
+        import platform
+        
+        missing_deps = []
+        
+        # Check for sshpass
+        result = subprocess.run(["which", "sshpass"], capture_output=True)
+        if result.returncode != 0:
+            missing_deps.append("sshpass")
+        
+        # Check for sshfs (optional, for auto-sync)
+        result = subprocess.run(["which", "sshfs"], capture_output=True)
+        sshfs_available = result.returncode == 0
+        
+        if missing_deps:
+            print("\n" + "="*70)
+            print("⚠  MISSING REQUIRED DEPENDENCIES")
+            print("="*70)
+            print("\nColabLink requires the following system packages:\n")
+            
+            system = platform.system()
+            
+            if "sshpass" in missing_deps:
+                print("  • sshpass (required for SSH authentication)")
+                
+            if system == "Linux":
+                print("\nInstall with:")
+                print("  sudo apt-get update")
+                if "sshpass" in missing_deps:
+                    print("  sudo apt-get install sshpass")
+                if not sshfs_available:
+                    print("  sudo apt-get install sshfs  # Optional: for auto-sync")
+            elif system == "Darwin":  # macOS
+                print("\nInstall with Homebrew:")
+                if "sshpass" in missing_deps:
+                    print("  brew install hudochenkov/sshpass/sshpass")
+                if not sshfs_available:
+                    print("  brew install macfuse sshfs  # Optional: for auto-sync")
+            
+            print("\n" + "="*70)
+            
+            if "sshpass" in missing_deps:
+                print("\nError: Cannot proceed without sshpass. Please install and try again.")
+                print("="*70)
+                sys.exit(1)
+        
+        if not sshfs_available:
+            print("\nNote: sshfs not found. Automatic bidirectional sync will be unavailable.")
+            print("      Install sshfs for automatic file sync, or use manual upload/download commands.")
     
     def _unmount_sshfs(self):
         """Unmount SSHFS if mounted."""

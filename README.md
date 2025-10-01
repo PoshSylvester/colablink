@@ -1,931 +1,324 @@
 # ColabLink
 
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
-![python version](https://img.shields.io/badge/python-3.6%2C3.7%2C3.8%2C3.9%2C3.10-blue?logo=python)
+![python version](https://img.shields.io/badge/python-3.6%2B-blue?logo=python)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.2.0-blue)](https://pypi.org/project/colablink/)
 
-Connect your local IDE (VS Code, Cursor, or any terminal) to Google Colab's GPU runtime. Work entirely locally with your files, code, and terminal while executing on Colab's powerful GPUs.
+Connect your local IDE to Google Colab's GPU runtime. Work entirely locally with your files and terminal while executing on Colab's powerful GPUs.
 
-## Overview
+## Why ColabLink?
 
-ColabLink lets you work on your local machine (with your files and terminal) while executing code on Google Colab's free GPU.
+- 🔄 **Automatic Bidirectional Sync** - Files sync instantly in both directions
+- 💻 **Local Development** - Use your favorite IDE (VS Code, Cursor, PyCharm)
+- ⚡ **Real-time Streaming** - See output as it happens, no buffering
+- 🎮 **Free GPU Access** - Tesla T4/P100/V100 GPUs from Google Colab
+- 📦 **Zero Config** - One-line setup, works in minutes
 
 ```
-Your Local Computer          →  Command  →     Google Colab
-  Code files (local)                              GPU Execution
-  Terminal (shows logs)      ←  Output  ←        Real-time Results
+Local Machine (Your IDE)  ←→  SSH Tunnel  ←→  Google Colab (Free GPU)
+    Files & Terminal                             Execute & Stream Results
 ```
-
-**Key Benefits:**
-- **Automatic Bidirectional Sync** - Files sync automatically in both directions via SSHFS
-- **Local Terminal Execution** - Run commands in your local terminal, execute on Colab GPU
-- **Seamless File Access** - Generated files appear locally instantly, no manual downloads
-- **Real-time Streaming** - See logs and output in real-time as your code runs
-- **GPU Access** - Full access to Colab's Tesla T4/P100/V100 GPUs
-- **IDE Integration** - Works with VS Code, Cursor, PyCharm, or any terminal
-- **Transparent** - Feels like working on a local machine with a powerful GPU
-
-## Table of Contents
-
-- [Quick Start](#quick-start)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Command Reference](#command-reference)
-- [Examples](#examples)
-- [Architecture](#architecture)
-- [Troubleshooting](#troubleshooting)
-- [Changelog](#changelog)
-- [Contributing](#contributing)
-- [License](#license)
-
----
 
 ## Quick Start
 
-Get started in 5 minutes!
-
-### Prerequisites
-
-- Python 3.6+ on local machine
-- Google account (for Colab)
-- Terminal access
-
-### Step 1: Install Locally
+### 1. Install
 
 ```bash
 pip install colablink
-
-# Install required system dependencies
-# Ubuntu/Debian:
-sudo apt-get install sshpass sshfs
-
-# macOS:
-brew install hudochenkov/sshpass/sshpass
-brew install macfuse sshfs
 ```
 
-**What are these for?**
-- `sshpass`: SSH authentication with password
-- `sshfs`: Automatic bidirectional file sync (mount Colab directory locally)
+On first run, ColabLink will guide you through installing any missing system dependencies (sshpass, sshfs).
 
-### Step 2: Setup Colab Runtime
+### 2. Setup Colab
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/PoshSylvester/colablink/blob/main/colab_setup.ipynb)
 
-Open Google Colab: https://colab.research.google.com/
-
-Or use the pre-configured notebook above, then run:
-
 ```python
-# Install
 !pip install colablink
 
-# Setup and run
 from colablink import ColabRuntime
-
-runtime = ColabRuntime(password="choose_a_strong_password")
+runtime = ColabRuntime(password="your_password")
 runtime.setup()
-runtime.keep_alive()  # Keep this running!
+runtime.keep_alive()
 ```
 
-After a moment, you'll see output with connection details.
+### 3. Connect & Use
 
-### Step 3: Connect from Local Terminal
-
-Copy the `colablink init` command from the Colab output and paste it in your local terminal:
+Copy the connection command from Colab output:
 
 ```bash
-colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "your_password", "mount_point": "/mnt/local"}'
-```
+colablink init '{"host": "...", "port": "...", "password": "...", "mount_point": "/mnt/local"}'
 
-### Step 4: Work with Your Files
-
-**Your files are now automatically synced!**
-
-- **Local → Colab**: Files you create/edit locally are accessible on Colab
-- **Colab → Local**: Files generated on Colab appear in `~/.colablink/colab_workspace/`
-
-No manual sync needed! The connection uses SSHFS for bidirectional file access.
-
-Alternatively, you can manually sync if needed:
-
-```bash
-# Manual sync (optional - only if automatic sync fails)
-colablink sync
-
-# Or upload specific files/directories
-colablink upload train.py
-colablink upload data/
-```
-
-### Step 5: Use Colab GPU from Local Terminal
-
-Now you can run commands locally that execute on Colab:
-
-```bash
-# Check GPU
+# Your files sync automatically! Now run commands:
 colablink exec nvidia-smi
-
-# Run Python script (on Colab GPU) - file must be synced first
-colablink exec python YourProjectName/train.py
-
-# Install packages on Colab
-colablink exec pip install torch torchvision
-
-# Interactive shell
-colablink shell
-```
-
----
-
-## Installation
-
-### Local Machine Installation
-
-#### Option A: Install from PyPI (Recommended)
-
-```bash
-pip install colablink
-```
-
-#### Option B: Install from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/PoshSylvester/colablink.git
-cd colablink
-
-# Install
-pip install .
-```
-
-#### Option C: Install from GitHub
-
-```bash
-pip install git+https://github.com/yourusername/colablink.git
-```
-
-### Install sshpass (Required)
-
-ColabLink uses `sshpass` for password-based SSH authentication.
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get update
-sudo apt-get install sshpass
-```
-
-**macOS:**
-```bash
-brew install hudochenkov/sshpass/sshpass
-```
-
-**Windows (WSL):**
-```bash
-# In WSL terminal
-sudo apt-get update
-sudo apt-get install sshpass
-```
-
-### Verify Installation
-
-```bash
-# Check colablink is installed
-colablink --help
-
-# Check sshpass is installed
-which sshpass
-```
-
-### Optional: ngrok Authentication
-
-For more stable connections, get a free ngrok account:
-
-1. Sign up at https://ngrok.com (free)
-2. Get your authtoken from dashboard
-3. Use token in Colab setup:
-
-```python
-runtime = ColabRuntime(
-    password="your_password",
-    ngrok_token="your_ngrok_token"  # Add this
-)
-runtime.setup()
-```
-
-Benefits:
-- More stable connections
-- Longer tunnel lifetime
-- Better connection reliability
-
-### Virtual Environment (Recommended)
-
-```bash
-# Create venv
-python -m venv colablink-env
-
-# Activate
-source colablink-env/bin/activate  # Linux/macOS
-# or
-colablink-env\Scripts\activate  # Windows
-
-# Install
-pip install colablink
-
-# When done
-deactivate
-```
-
----
-
-## Usage
-
-### Basic Commands
-
-```bash
-# Execute any command on Colab
-colablink exec <command>
-
-# Interactive shell (like SSH)
-colablink shell
-
-# Check connection status and GPU info
-colablink status
-
-# Forward ports (Jupyter, TensorBoard, etc.)
-colablink forward 8888  # Jupyter
-colablink forward 6006  # TensorBoard
-
-# Disconnect
-colablink disconnect
-```
-
-### File Synchronization
-
-**By default, ColabLink automatically syncs files bidirectionally using SSHFS.** Files appear instantly in both directions without manual commands!
-
-If automatic sync is unavailable or disabled, ColabLink provides manual file management commands:
-
-#### Download Files and Directories from Colab
-
-All download commands automatically detect whether the source is a file or directory:
-
-```bash
-# Download a single file
-colablink download /content/model.pt
-
-# Download to specific location
-colablink download /content/model.pt --destination ./models/
-
-# Download entire directory (auto-detected)
-colablink download /content/output/
-colablink download /content/data/
-
-# Force recursive mode
-colablink download /content/results/ --recursive
-```
-
-**Smart Detection**: ColabLink automatically detects directories and uses recursive mode when needed.
-
-#### Upload Files and Directories to Colab
-
-Upload commands automatically detect local files vs directories:
-
-```bash
-# Upload a single file
-colablink upload train.py
-
-# Upload entire directory (auto-detected)
-colablink upload data/
-colablink upload myproject/
-
-# Upload with custom destination
-colablink upload model.py --destination /content/models/
-colablink upload data/ --destination /content/datasets/
-```
-
-**Auto-Recursive**: Directories are automatically uploaded recursively - no flags needed!
-
-#### Sync Entire Directory
-
-```bash
-# Sync current directory to Colab
-colablink sync
-
-# Sync specific directory
-colablink sync --directory /path/to/project
-```
-
-This will:
-- Upload your entire project directory to `/content/YourProjectName/` on Colab
-- Automatically exclude common files (`.git`, `__pycache__`, `node_modules`, etc.)
-- Use efficient tar compression for faster transfer
-
-#### After Syncing
-
-Once files are synced, you can execute them:
-
-```bash
-# If you synced current directory named "myproject"
-colablink exec python myproject/train.py
-
-# If you uploaded a single file
 colablink exec python train.py
+
+# Files generated on Colab appear in: ~/.colablink/colab_workspace/
 ```
 
-**Note:** Files need to be synced before execution. Any changes made locally require re-syncing.
-
-### Example Workflow: Training a Model
-
-**Local Machine Setup:**
-
-```bash
-# Create project
-mkdir my-ml-project
-cd my-ml-project
-
-# Create a training script
-cat > train.py << 'EOF'
-import torch
-import torch.nn as nn
-
-print(f"CUDA available: {torch.cuda.is_available()}")
-if torch.cuda.is_available():
-    print(f"GPU: {torch.cuda.get_device_name(0)}")
-
-# Simple model
-model = nn.Linear(10, 1).cuda()
-print("Model created on GPU!")
-
-# Dummy training
-optimizer = torch.optim.Adam(model.parameters())
-for epoch in range(10):
-    loss = model(torch.randn(32, 10).cuda()).sum()
-    loss.backward()
-    optimizer.step()
-    print(f"Epoch {epoch}: loss = {loss.item():.4f}")
-
-print("Training complete!")
-EOF
-```
-
-**Sync and Run on Colab GPU:**
-
-```bash
-# Sync project to Colab
-colablink sync
-
-# Execute on Colab (output streams to your terminal)
-colablink exec python my-ml-project/train.py
-```
-
-**Output:**
-```
-CUDA available: True
-GPU: Tesla T4
-Model created on GPU!
-Epoch 0: loss = -2.3456
-Epoch 1: loss = -2.1234
-...
-Training complete!
-```
-
-### VS Code / Cursor Integration
-
-#### Option 1: Integrated Terminal
-
-1. Open VS Code/Cursor
-2. Open your project folder
-3. Open integrated terminal (Ctrl+`)
-4. Run commands with `colablink exec`
-
-All logs appear in VS Code's terminal panel!
-
-#### Option 2: Remote-SSH Extension
-
-After running `colablink init`, you can use VS Code's Remote-SSH:
-
-1. Install "Remote - SSH" extension
-2. Press `F1` → "Remote-SSH: Connect to Host"
-3. Select `colablink` from the list
-4. VS Code connects to Colab runtime
-
-Configuration is automatically added to `~/.ssh/config`.
-
-### Port Forwarding
-
-Forward Colab services to local machine:
-
-```bash
-# Start Jupyter on Colab
-colablink exec "jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root"
-
-# In another terminal, forward port
-colablink forward 8888
-
-# Access in browser: http://localhost:8888
-```
-
-Same for TensorBoard:
-```bash
-colablink forward 6006
-colablink exec "tensorboard --logdir=./runs --port=6006"
-# Access at http://localhost:6006
-```
-
-### Installing Requirements
-
-```bash
-# Create requirements.txt locally
-cat > requirements.txt << EOF
-torch
-torchvision
-transformers
-pandas
-EOF
-
-# Install on Colab
-colablink exec pip install -r requirements.txt
-```
-
-### Working with Data
-
-Your local data files are accessible via commands:
-
-```python
-# In train.py
-import pandas as pd
-
-# This reads from your LOCAL machine
-df = pd.read_csv('./data/dataset.csv')
-
-# Process with Colab GPU
-model.train(df)
-
-# Save back to LOCAL machine
-model.save('./models/trained_model.pt')
-```
-
-Files are transferred on-demand via SSH.
+That's it! You're now running code on Colab GPU from your local terminal.
 
 ---
 
 ## Command Reference
 
-ColabLink provides a comprehensive CLI for managing your Colab connection. Here's the complete reference:
+### Core Commands
 
-### `colablink init`
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `init` | Connect to Colab | `colablink init '{...}'` |
+| `exec` | Run command on GPU | `colablink exec python train.py` |
+| `shell` | Interactive session | `colablink shell` |
+| `status` | Check connection | `colablink status` |
+| `disconnect` | Close connection | `colablink disconnect` |
 
-Initialize connection to Colab runtime.
+### File Management (Manual Mode)
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `upload` | Push to Colab | `colablink upload data/` |
+| `download` | Pull from Colab | `colablink download /content/model.pt` |
+| `sync` | Sync directory | `colablink sync` |
+
+### Utilities
+
+| Command | Purpose | Example |
+|---------|---------|---------|
+| `forward` | Port forwarding | `colablink forward 8888` |
+
+### Detailed Usage
+
+<details>
+<summary><b>colablink init</b> - Initialize connection</summary>
 
 ```bash
 colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "xxx", "mount_point": "/mnt/local"}'
 ```
 
-**What it does:**
-- Establishes SSH connection to Colab
-- Sets up automatic bidirectional file sync (if sshfs available)
-- Tests connection and displays status
-- Saves configuration to `~/.colablink/config.json`
+Establishes SSH connection, sets up bidirectional file sync, and saves configuration.
 
-### `colablink exec`
+</details>
 
-Execute commands on Colab GPU with real-time output streaming.
+<details>
+<summary><b>colablink exec</b> - Execute commands</summary>
 
 ```bash
-colablink exec <command>
-
-# Examples:
 colablink exec nvidia-smi
 colablink exec python train.py
 colablink exec "pip install torch torchvision"
-colablink exec "for i in {1..5}; do echo Line \$i; done"
 ```
 
-**Features:**
-- Real-time output streaming (no buffering)
-- Automatic GPU/CUDA environment setup
-- Python unbuffered mode for immediate output
-- Proper terminal width handling
-- Keyboard interrupt support (Ctrl+C)
+Features: Real-time streaming, GPU environment auto-configured, keyboard interrupt support.
 
-### `colablink shell`
+</details>
 
-Start an interactive SSH shell on Colab.
+<details>
+<summary><b>colablink upload / download</b> - File transfer</summary>
 
 ```bash
-colablink shell
+# Upload (auto-detects directories)
+colablink upload train.py
+colablink upload data/                    # Auto-recursive
+colablink upload model.py -d /content/models/
+
+# Download (auto-detects directories)
+colablink download /content/model.pt
+colablink download /content/output/       # Auto-recursive
+colablink download /content/data/ -d ./local_data/
 ```
 
-**What it does:**
-- Opens interactive bash session on Colab
-- Full terminal access with GPU/CUDA environment
-- Exit with `exit` or Ctrl+D
-- All files accessible in Colab
+Smart detection: automatically handles files vs directories.
 
-### `colablink upload`
+</details>
 
-Upload files or directories to Colab.
+<details>
+<summary><b>colablink sync</b> - Sync entire directory</summary>
 
 ```bash
-colablink upload <source> [--destination DEST] [--recursive]
-
-# Examples:
-colablink upload train.py                          # Upload single file
-colablink upload data/                             # Upload directory (auto-recursive)
-colablink upload model.py -d /content/models/      # Custom destination
-colablink upload project/ -r                       # Force recursive
-```
-
-**Options:**
-- `source`: Local file or directory path
-- `--destination, -d`: Remote destination path (default: `/content/`)
-- `--recursive, -r`: Force recursive mode (auto-detected for directories)
-
-**Features:**
-- Automatic directory detection
-- Smart recursive mode
-- Progress indication
-- ✓/✗ success/failure symbols
-
-### `colablink download`
-
-Download files or directories from Colab to local machine.
-
-```bash
-colablink download <source> [--destination DEST] [--recursive]
-
-# Examples:
-colablink download /content/model.pt               # Download single file
-colablink download /content/output/                # Download directory (auto-detected)
-colablink download /content/results/ -d ./results/ # Custom destination
-colablink download /content/data/ -r               # Force recursive
-```
-
-**Options:**
-- `source`: Remote file or directory path on Colab
-- `--destination, -d`: Local destination path (default: current directory)
-- `--recursive, -r`: Force recursive mode (auto-detected for directories)
-
-**Features:**
-- Automatic directory detection (by trailing `/` or no extension)
-- Smart retry if directory detected
-- Progress indication
-- ✓/✗ success/failure symbols
-
-### `colablink sync`
-
-Sync entire directory to Colab with smart exclusions.
-
-```bash
-colablink sync [--directory DIR]
-
-# Examples:
 colablink sync                    # Sync current directory
-colablink sync -d /path/to/project  # Sync specific directory
+colablink sync -d /path/to/project
 ```
 
-**Options:**
-- `--directory, -d`: Directory to sync (default: current directory)
+Automatically excludes: `.git`, `__pycache__`, `venv`, `node_modules`, `*.pyc`, `dist`, `build`
 
-**Features:**
-- Efficient tar-based compression
-- Automatic exclusions: `.git`, `__pycache__`, `node_modules`, `venv`, `*.pyc`, etc.
-- Uploads to `/content/DirectoryName/` on Colab
-- Fast transfer of entire projects
+</details>
 
-**Auto-excluded patterns:**
-- `__pycache__`, `*.pyc`
-- `.git`, `.gitignore`
-- `venv`, `env`, `.venv`
-- `node_modules`
-- `*.egg-info`, `dist`, `build`
-
-### `colablink status`
-
-Check connection status and GPU information.
+<details>
+<summary><b>colablink forward</b> - Port forwarding</summary>
 
 ```bash
-colablink status
+colablink forward 8888              # Jupyter
+colablink forward 6006              # TensorBoard
+colablink forward 5000 --local-port 3000
 ```
 
-**Displays:**
-- Connection status (Connected/Disconnected)
-- Host and port information
-- GPU name, total memory, and current usage
-- Quick health check
+Access forwarded services at `http://localhost:PORT`
 
-### `colablink forward`
+</details>
 
-Forward ports from Colab to local machine.
+---
+
+## File Synchronization
+
+### Automatic Mode (Default)
+
+When you run `colablink init`, files sync **automatically** in both directions:
+
+- **Local → Colab**: Your local files are accessible on Colab
+- **Colab → Local**: Generated files appear in `~/.colablink/colab_workspace/`
+
+No manual commands needed! Works via SSHFS mounting.
+
+### Manual Mode
+
+If automatic sync is unavailable (sshfs not installed), use manual commands:
 
 ```bash
-colablink forward <port> [--local-port LOCAL_PORT]
-
-# Examples:
-colablink forward 8888              # Jupyter (8888 -> localhost:8888)
-colablink forward 6006              # TensorBoard (6006 -> localhost:6006)
-colablink forward 8080 --local-port 3000  # Custom mapping
+colablink upload data/                    # Push to Colab
+colablink exec python train.py           # Run
+colablink download /content/model.pt     # Pull results
 ```
-
-**Options:**
-- `port`: Remote port on Colab to forward
-- `--local-port`: Local port (default: same as remote port)
-
-**Use cases:**
-- Jupyter notebooks: `forward 8888`
-- TensorBoard: `forward 6006`
-- Web apps: `forward 5000`
-- Any TCP service running on Colab
-
-### `colablink disconnect`
-
-Disconnect from Colab runtime and cleanup.
-
-```bash
-colablink disconnect
-```
-
-**What it does:**
-- Closes all port forwards
-- Unmounts SSHFS (if mounted)
-- Cleans up resources
-- Keeps configuration for reconnection
 
 ---
 
 ## Examples
 
-### Example 1: MNIST Training
-
-Train a CNN on MNIST using Colab GPU. See `examples/train_mnist.py`.
+### MNIST Training
 
 ```bash
+# Sync project
+colablink sync
+
+# Train on Colab GPU
 colablink exec python examples/train_mnist.py
+
+# Model saved to ~/.colablink/colab_workspace/mnist_model.pt automatically!
 ```
 
-### Example 2: GPU Information
-
-Check GPU availability and specifications:
+### Interactive Development
 
 ```bash
-colablink exec python examples/gpu_info.py
-```
-
-### Example 3: Interactive Python
-
-```bash
+# Start shell on Colab
 colablink shell
 
+# Now you're on Colab with GPU access:
+root@colab:~# nvidia-smi
 root@colab:~# python
 >>> import torch
 >>> torch.cuda.is_available()
 True
->>> torch.cuda.get_device_name(0)
-'Tesla T4'
 ```
 
-### More Examples
+### Jupyter Integration
 
-Check the `examples/` directory for:
-- MNIST training with real-time output
-- GPU information scripts
-- Jupyter integration
-- TensorBoard integration
+```bash
+# Start Jupyter on Colab
+colablink exec "jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root" &
+
+# Forward port
+colablink forward 8888
+
+# Open: http://localhost:8888
+```
 
 ---
 
 ## Architecture
 
-### System Overview
+**Simple 3-step flow:**
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     LOCAL MACHINE                           │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  User's Terminal / IDE (VS Code, Cursor)             │  │
-│  │  - Source code files (local)                         │  │
-│  │  - Data files (local)                                │  │
-│  │  - Terminal shows real-time output                   │  │
-│  └───────────────────┬──────────────────────────────────┘  │
-│                      │                                      │
-│  ┌───────────────────▼──────────────────────────────────┐  │
-│  │  LocalClient (colablink/client.py)                │  │
-│  │  - Connection management                             │  │
-│  │  - SSH command execution                             │  │
-│  │  - Output streaming                                  │  │
-│  │  - Port forwarding                                   │  │
-│  └───────────────────┬──────────────────────────────────┘  │
-│                      │                                      │
-└──────────────────────┼──────────────────────────────────────┘
-                       │
-                       │ SSH over ngrok tunnel
-                       │ (Encrypted, Authenticated)
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│                   GOOGLE COLAB                              │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  ColabRuntime (colablink/runtime.py)              │  │
-│  │  - SSH server setup                                  │  │
-│  │  - ngrok tunnel creation                             │  │
-│  │  - Connection management                             │  │
-│  │  - Keep-alive mechanism                              │  │
-│  └───────────────────┬──────────────────────────────────┘  │
-│                      │                                      │
-│  ┌───────────────────▼──────────────────────────────────┐  │
-│  │  Execution Environment                               │  │
-│  │  - GPU: Tesla T4 / P100 / V100                       │  │
-│  │  - Python runtime                                    │  │
-│  │  - CUDA libraries                                    │  │
-│  │  - Executes code                                     │  │
-│  │  - Streams output back                               │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+1. **Colab Runtime** (`ColabRuntime`) - Sets up SSH server and ngrok tunnel
+2. **SSH Tunnel** - Encrypted connection via ngrok
+3. **Local Client** (`LocalClient`) - Executes commands and streams output
 
-### Components
+**Security:** Password-based SSH authentication over TLS-encrypted ngrok tunnel.
 
-#### 1. ColabRuntime (Colab-side)
-
-**Location:** `colablink/runtime.py`
-
-**Responsibilities:**
-- Install and configure OpenSSH server
-- Set up authentication (password-based)
-- Create ngrok tunnel for SSH access
-- Keep session alive
-- Display connection information
-
-**Configuration:**
-```python
-runtime = ColabRuntime(
-    password="secure_password",    # SSH authentication
-    ngrok_token="optional_token",  # Stable tunnel (recommended)
-    mount_point="/mnt/local"       # Where local files appear
-)
-```
-
-#### 2. LocalClient (Local machine)
-
-**Location:** `colablink/client.py`
-
-**Responsibilities:**
-- Manage connection to Colab
-- Execute commands via SSH
-- Stream output in real-time
-- Forward ports for services
-- Handle file access via SSH
-
-**Configuration stored in:** `~/.colablink/config.json`
-
-#### 3. CLI Tool
-
-**Location:** `colablink/cli.py`
-
-**Commands:**
-- `colablink init` - Initialize connection
-- `colablink exec` - Execute command on Colab
-- `colablink shell` - Interactive shell
-- `colablink status` - Connection status
-- `colablink forward` - Port forwarding
-- `colablink disconnect` - Disconnect
-
-### Connection Flow
-
-**Setup Phase:**
-1. User opens Colab notebook
-2. Runs `ColabRuntime().setup()`
-   - Installs OpenSSH server
-   - Configures authentication
-   - Creates ngrok tunnel
-   - Displays connection string
-3. User copies connection command
-4. Runs locally: `colablink init '...'`
-   - Saves configuration
-   - Creates SSH config
-   - Tests connection
-   - Ready to use
-
-**Execution Flow:**
-1. User runs: `colablink exec python train.py`
-2. LocalClient.execute() is called
-   - Builds SSH command with auth
-   - Executes via SSH tunnel
-3. On Colab:
-   - SSH server receives command
-   - Executes in Python runtime
-   - GPU resources available
-   - Output streams back
-4. LocalClient receives output
-   - stdout → local terminal
-   - stderr → local terminal
-   - Real-time streaming
-5. Execution completes
-
-### Security
-
-- **Password-based SSH authentication**
-- **ngrok tunnel**: TLS encrypted
-- **SSH**: End-to-end encryption
-- **No public key exposure**
-- **Session-based credentials**
-
-### Performance Considerations
-
-**Network Latency:**
-- RTT: ~100-300ms typical
-- Impact: File I/O operations
-- Mitigation: Cache data, minimize file reads
-
-**GPU Utilization:**
-- Goal: Keep GPU busy
-- Issue: I/O bottlenecks
-- Solution: Async data loading, prefetching
+**File Access:** SSHFS bidirectional mounting (automatic) or manual upload/download (fallback).
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Connection Issues
 
-#### "sshpass not found"
-
-**Solution:**
 ```bash
-# Ubuntu/Debian
-sudo apt-get install sshpass
-
-# macOS
-brew install hudochenkov/sshpass/sshpass
-```
-
-#### "Connection failed"
-
-**Solutions:**
-1. Make sure Colab cell is still running
-2. Check firewall settings
-3. Try with ngrok authtoken
-4. Verify password is correct
-
-#### Colab Disconnected
-
-Colab free tier disconnects after inactivity. Simply:
-1. Rerun the Colab setup cell
-2. Copy new connection command
-3. Run `colablink init` again
-
-#### Command Hangs
-
-Press Ctrl+C to cancel. Check connection:
-```bash
+# Check status
 colablink status
+
+# Reconnect if Colab disconnected
+# 1. Rerun Colab setup cell
+# 2. Copy new init command
+# 3. Run: colablink init '...'
 ```
 
-#### Permission Denied During Install
+### Missing Dependencies
 
-**Solution:**
+ColabLink will prompt you to install missing dependencies on first run:
+
+**Linux/WSL:**
 ```bash
-# Install with user flag
+sudo apt-get install sshpass sshfs
+```
+
+**macOS:**
+```bash
+brew install hudochenkov/sshpass/sshpass
+brew install macfuse sshfs
+```
+
+### Command Hangs
+
+Press `Ctrl+C` to cancel. Check connection with `colablink status`.
+
+### Permission Errors
+
+```bash
+# Install in user directory
 pip install --user colablink
 
-# Or use virtual environment
+# Or use virtual environment (recommended)
 python -m venv venv
 source venv/bin/activate
 pip install colablink
 ```
 
-#### Command Not Found After Installation
+---
 
-**Solution:**
-```bash
-# Find installation location
-pip show colablink
+## Advanced
 
-# Add to PATH (add to ~/.bashrc or ~/.zshrc)
-export PATH="$HOME/.local/bin:$PATH"
+### Python API
 
-# Reload shell
-source ~/.bashrc
+```python
+from colablink import LocalClient
+
+client = LocalClient()
+client.initialize(config)
+client.execute("python train.py")
+client.download("/content/model.pt", "./models/")
 ```
 
-### Verification
+### VS Code Remote-SSH
 
-After installation, verify everything works:
+After `colablink init`, use VS Code's Remote-SSH extension:
 
-```bash
-# 1. Check CLI is available
-colablink --help
+1. Install "Remote - SSH" extension
+2. Press `F1` → "Remote-SSH: Connect to Host"
+3. Select `colablink` from the list
 
-# 2. Check Python import
-python -c "from colablink import ColabRuntime, LocalClient; print('OK')"
+Configuration is automatically added to `~/.ssh/config`.
 
-# 3. Check sshpass
-which sshpass
+### Custom ngrok Token (Recommended)
 
-# 4. Setup Colab and test connection
-colablink status
+For stable connections:
+
+1. Get free token at https://ngrok.com
+2. Use in Colab:
+
+```python
+runtime = ColabRuntime(
+    password="your_password",
+    ngrok_token="your_ngrok_token"
+)
 ```
 
 ---
@@ -934,213 +327,51 @@ colablink status
 
 ### [1.2.0] - 2025-10-01
 
-#### Added
-
-**Automatic Bidirectional File Sync:**
-- SSHFS-based automatic mounting of Colab directory locally
-- Files generated on Colab appear instantly in `~/.colablink/colab_workspace/`
-- No manual download commands needed
-- Real-time file synchronization in both directions
-- Automatic reconnection on network interruptions
-- Configurable: can enable/disable auto-sync via `auto_sync` parameter
-
-**Manual File Management:**
-- `colablink download` - Download files/directories from Colab to local
-- Manual sync mode with clear warnings when auto-sync is disabled
-- Explicit upload/download/sync commands for fine-grained control
-
-**Improvements:**
-- Seamless workflow - write code locally, see results locally
-- Trained models and outputs automatically available locally
-- Better developer experience with transparent file access
-- Graceful fallback to manual sync if SSHFS unavailable
-- Bold warnings when manual file management is required
-
-**Requirements:**
-- Added `sshfs` as optional but recommended dependency
-- Enhanced installation documentation
+- ✨ Automatic bidirectional file sync via SSHFS
+- ✨ `colablink download` command for pulling files
+- ✨ Auto-detection of files vs directories
+- ✨ Real-time unbuffered output streaming
+- 🐛 Fixed jagged output display
+- 📚 Comprehensive command documentation
 
 ### [1.1.0] - 2025-10-01
 
-#### Added
-
-**File Synchronization:**
-- `colablink sync` - Sync entire directory to Colab with smart exclusions
-- `colablink upload` - Upload specific files or directories
-- Automatic exclusion of common files (.git, __pycache__, venv, etc.)
-- Efficient tar-based compression for faster transfers
-- Custom destination support for uploads
-
-**Improvements:**
-- Better file management workflow
-- No need for manual scp commands
-- Streamlined development experience
-- Updated documentation with file sync examples
-
-**CLI Enhancements:**
-- Added `upload` subcommand with recursive support
-- Added `sync` subcommand with directory selection
-- Enhanced help text with sync examples
+- ✨ `colablink upload` and `colablink sync` commands
+- ✨ Smart file exclusions (.git, __pycache__, etc.)
+- ✨ Tar-based efficient compression
 
 ### [1.0.0] - 2025-09-30
 
-#### Complete Rewrite
+- 🎉 Initial release
+- ✨ SSH-based connection to Colab
+- ✨ Real-time command execution
+- ✨ GPU environment auto-configuration
+- ✨ Port forwarding support
 
-This is a complete rewrite of the original colabcode package with a new architecture and focus.
-
-#### Added
-
-**Core Features:**
-- Local Terminal Execution: Execute commands from local terminal with output streaming to local
-- Local File Management: All files (code and data) stay on local machine
-- Real-time Output Streaming: See logs and output in real-time
-- GPU Access: Full access to Google Colab's GPU (Tesla T4/P100/V100)
-
-**Components:**
-- `ColabRuntime` class for Colab-side setup
-- `LocalClient` class for local-side connection
-- `colablink` CLI tool
-- SSH-based secure connection over ngrok tunnel
-- Port forwarding for Jupyter, TensorBoard, etc.
-
-**Commands:**
-- `colablink init` - Initialize connection
-- `colablink exec` - Execute command on Colab
-- `colablink shell` - Interactive SSH shell
-- `colablink status` - Check connection and GPU
-- `colablink forward` - Forward ports
-- `colablink disconnect` - Disconnect
-
-#### Changed
-
-**Architecture:**
-- Changed from web-based code-server to SSH-based execution
-- Moved from browser IDE to local IDE integration
-- Changed file access from manual upload to on-demand SSH access
-- Improved security with password-based SSH authentication
-
-**User Experience:**
-- Simplified setup to single command on each side
-- Improved output streaming for real-time feedback
-- Added status monitoring and GPU information display
-
-#### Removed
-
-**Legacy Features (from colabcode v0.x):**
-- Web-based code-server interface (replaced with local IDE)
-- Browser-based VS Code (replaced with local VS Code/Cursor)
-- JupyterLab support (can still use via port forwarding)
-
-#### Migration from colabcode 0.x
-
-**Old (colabcode 0.x):**
-```python
-from colabcode import ColabCode
-ColabCode(port=10000, password="password")
-# Opens browser-based VS Code
-```
-
-**New (ColabLink 2.0):**
-```python
-# On Colab:
-from colablink import ColabRuntime
-runtime = ColabRuntime(password="password")
-runtime.setup()
-
-# On Local:
-colablink init '...'
-colablink exec python train.py
-```
-
-#### Technical Details
-
-**Dependencies:**
-- `pyngrok>=5.0.5` - For tunnel creation
-- `sshpass` - For password-based SSH (system package)
-- OpenSSH server - Installed automatically on Colab
-
-**Python Support:**
-- Python 3.6+
-- Tested on Python 3.7, 3.8, 3.9, 3.10
-
-**Platform Support:**
-- Linux (native)
-- macOS (native)
-- Windows (via WSL)
-
-#### Known Issues
-
-1. **File I/O Performance**: Network latency for file access
-2. **Colab Timeout**: 12-hour session limit on free tier
-3. **Single Connection**: Only one Colab session at a time
-4. **sshpass Requirement**: Requires manual installation
-
-#### Future Roadmap
-
-**Version 2.1 (Planned):**
-- Reverse SSHFS mounting for faster file access
-- File caching system
-- Improved error handling
-
-**Version 2.2 (Planned):**
-- SSH key authentication support
-- Multiple simultaneous connections
-- Auto-reconnection on disconnect
-
-**Version 3.0 (Future):**
-- VS Code extension
-- Cursor native integration
-- Remote debugging support
+[Full changelog →](https://github.com/PoshSylvester/colablink/releases)
 
 ---
 
 ## Contributing
 
-Contributions welcome! Please feel free to submit issues and pull requests.
+Contributions welcome! Submit issues and pull requests on [GitHub](https://github.com/PoshSylvester/colablink).
 
-### Development Setup
-
+**Development:**
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/colablink.git
+git clone https://github.com/PoshSylvester/colablink.git
 cd colablink
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install in editable mode
-pip install -e .
-
-# Run tests
-pytest tests/
+pip install -e ".[dev]"
 ```
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## Acknowledgments
+**Made for developers who want local development with cloud GPU power** 🚀
 
-- Inspired by colabcode and colab-ssh projects
-- Uses pyngrok for tunnel creation
-- Built for the ML/AI community
+**Version:** 1.2.0 | **Status:** Stable | **License:** MIT
 
-## Support
-
-For issues and questions:
-- GitHub Issues: Report problems and request features
-- Examples: Check `examples/` directory for sample code
-- Documentation: This README contains comprehensive documentation
-
----
-
-**Made for developers who want local development experience with cloud GPU power**
-
-**Version:** 1.2.0  
-**Status:** Stable  
-**License:** MIT
