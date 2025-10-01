@@ -234,6 +234,152 @@ class LocalClient:
         else:
             print("  Status: Disconnected")
     
+    def upload(self, source: str, destination: Optional[str] = None, recursive: bool = False):
+        """
+        Upload files or directories to Colab.
+        
+        Args:
+            source: Local file or directory path
+            destination: Remote path on Colab (default: /content/)
+            recursive: Whether to upload recursively for directories
+        """
+        self._load_config()
+        
+        if not self.config:
+            print("Error: Not connected. Run 'colablink init' first.")
+            return 1
+        
+        # Resolve source path
+        source_path = os.path.abspath(source)
+        if not os.path.exists(source_path):
+            print(f"Error: Source path does not exist: {source}")
+            return 1
+        
+        # Determine destination
+        if destination is None:
+            if os.path.isfile(source_path):
+                destination = f"/content/{os.path.basename(source_path)}"
+            else:
+                destination = f"/content/{os.path.basename(source_path)}"
+        
+        # Build scp command
+        scp_cmd = ["sshpass", "-p", f"'{self.config['password']}'", "scp"]
+        
+        # Add options
+        scp_cmd.extend([
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-P", str(self.config['port']),
+        ])
+        
+        # Add recursive flag if needed
+        if recursive or os.path.isdir(source_path):
+            scp_cmd.append("-r")
+        
+        # Add source and destination
+        scp_cmd.append(source_path)
+        scp_cmd.append(f"root@{self.config['host']}:{destination}")
+        
+        # Execute upload
+        print(f"Uploading {source} to Colab:{destination}...")
+        result = subprocess.run(
+            " ".join(scp_cmd),
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            print(f"Upload successful: {destination}")
+            return 0
+        else:
+            print(f"Upload failed: {result.stderr}")
+            return 1
+    
+    def sync(self, directory: Optional[str] = None, exclude: Optional[List[str]] = None):
+        """
+        Sync current directory (or specified directory) to Colab.
+        
+        Args:
+            directory: Directory to sync (default: current directory)
+            exclude: List of patterns to exclude (e.g., ['*.pyc', '__pycache__'])
+        """
+        self._load_config()
+        
+        if not self.config:
+            print("Error: Not connected. Run 'colablink init' first.")
+            return 1
+        
+        # Determine source directory
+        if directory is None:
+            directory = os.getcwd()
+        
+        source_dir = os.path.abspath(directory)
+        if not os.path.isdir(source_dir):
+            print(f"Error: Not a directory: {directory}")
+            return 1
+        
+        # Default exclusions
+        if exclude is None:
+            exclude = [
+                '__pycache__',
+                '*.pyc',
+                '.git',
+                '.gitignore',
+                'venv',
+                'env',
+                '.venv',
+                'node_modules',
+                '*.egg-info',
+                'dist',
+                'build',
+            ]
+        
+        # Create destination directory on Colab
+        dir_name = os.path.basename(source_dir)
+        remote_dir = f"/content/{dir_name}"
+        
+        print(f"Syncing {source_dir} to Colab:{remote_dir}...")
+        
+        # Build rsync-like command using scp with find
+        ssh_cmd = self._build_ssh_command()
+        
+        # First, create the directory structure
+        subprocess.run(
+            f"{ssh_cmd} 'mkdir -p {remote_dir}'",
+            shell=True,
+            capture_output=True
+        )
+        
+        # Use tar to efficiently transfer directory
+        tar_exclude = " ".join([f"--exclude='{pattern}'" for pattern in exclude])
+        
+        upload_cmd = f"""
+        cd {os.path.dirname(source_dir)} && \
+        tar czf - {tar_exclude} {dir_name} | \
+        sshpass -p '{self.config['password']}' ssh \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -p {self.config['port']} \
+            root@{self.config['host']} \
+            'cd /content && tar xzf -'
+        """
+        
+        result = subprocess.run(
+            upload_cmd,
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            print(f"Sync complete: {remote_dir}")
+            print(f"You can now run: colablink exec python {dir_name}/your_script.py")
+            return 0
+        else:
+            print(f"Sync failed: {result.stderr}")
+            return 1
+    
     def disconnect(self):
         """Disconnect from Colab runtime."""
         # Kill port forwards

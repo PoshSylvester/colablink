@@ -20,6 +20,15 @@ Examples:
   # Initialize connection to Colab
   colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "xxx", "mount_point": "/mnt/local"}'
   
+  # Sync current directory to Colab
+  colablink sync
+  
+  # Upload a specific file
+  colablink upload train.py
+  
+  # Upload a directory
+  colablink upload data/
+  
   # Execute a Python script on Colab GPU
   colablink exec python train.py
   
@@ -57,6 +66,16 @@ Examples:
     forward_parser = subparsers.add_parser('forward', help='Forward port from Colab to local')
     forward_parser.add_argument('port', type=int, help='Port to forward')
     forward_parser.add_argument('--local-port', type=int, help='Local port (default: same as remote)')
+    
+    # Upload command
+    upload_parser = subparsers.add_parser('upload', help='Upload file or directory to Colab')
+    upload_parser.add_argument('source', help='Local file or directory to upload')
+    upload_parser.add_argument('--destination', '-d', help='Remote destination path (default: /content/)')
+    upload_parser.add_argument('--recursive', '-r', action='store_true', help='Upload directory recursively')
+    
+    # Sync command
+    sync_parser = subparsers.add_parser('sync', help='Sync current directory to Colab')
+    sync_parser.add_argument('--directory', '-d', help='Directory to sync (default: current directory)')
     
     # Disconnect command
     disconnect_parser = subparsers.add_parser('disconnect', help='Disconnect from Colab')
@@ -100,6 +119,16 @@ Examples:
                 time.sleep(1)
         except KeyboardInterrupt:
             print("\nStopping port forwarding...")
+    
+    elif args.command == 'upload':
+        return client.upload(
+            args.source,
+            destination=args.destination,
+            recursive=args.recursive
+        )
+    
+    elif args.command == 'sync':
+        return client.sync(directory=args.directory)
     
     elif args.command == 'disconnect':
         client.disconnect()

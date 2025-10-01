@@ -90,7 +90,20 @@ Copy the `colablink init` command from the Colab output and paste it in your loc
 colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "your_password", "mount_point": "/mnt/local"}'
 ```
 
-### Step 4: Use Colab GPU from Local Terminal
+### Step 4: Sync Your Files to Colab
+
+Sync your project files to Colab so you can execute them:
+
+```bash
+# Sync entire current directory
+colablink sync
+
+# Or upload specific files/directories
+colablink upload train.py
+colablink upload data/
+```
+
+### Step 5: Use Colab GPU from Local Terminal
 
 Now you can run commands locally that execute on Colab:
 
@@ -98,8 +111,8 @@ Now you can run commands locally that execute on Colab:
 # Check GPU
 colablink exec nvidia-smi
 
-# Run Python script (on Colab GPU)
-colablink exec python train.py
+# Run Python script (on Colab GPU) - file must be synced first
+colablink exec python YourProjectName/train.py
 
 # Install packages on Colab
 colablink exec pip install torch torchvision
@@ -114,7 +127,7 @@ colablink shell
 
 ### Local Machine Installation
 
-#### Option A: Install from PyPI (when published)
+#### Option A: Install from PyPI (Recommended)
 
 ```bash
 pip install colablink
@@ -124,7 +137,7 @@ pip install colablink
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/colablink.git
+git clone https://github.com/PoshSylvester/colablink.git
 cd colablink
 
 # Install
@@ -232,6 +245,55 @@ colablink forward 6006  # TensorBoard
 colablink disconnect
 ```
 
+### File Synchronization
+
+ColabLink provides convenient commands to sync your local files to Colab:
+
+#### Sync Entire Directory
+
+```bash
+# Sync current directory to Colab
+colablink sync
+
+# Sync specific directory
+colablink sync --directory /path/to/project
+```
+
+This will:
+- Upload your entire project directory to `/content/YourProjectName/` on Colab
+- Automatically exclude common files (`.git`, `__pycache__`, `node_modules`, etc.)
+- Use efficient compression for faster transfer
+
+#### Upload Specific Files or Directories
+
+```bash
+# Upload a single file
+colablink upload train.py
+
+# Upload a directory
+colablink upload data/
+
+# Upload with custom destination
+colablink upload model.py --destination /content/models/
+
+# Upload directory recursively
+colablink upload myproject/ --recursive
+```
+
+#### After Syncing
+
+Once files are synced, you can execute them:
+
+```bash
+# If you synced current directory named "myproject"
+colablink exec python myproject/train.py
+
+# If you uploaded a single file
+colablink exec python train.py
+```
+
+**Note:** Files need to be synced before execution. Any changes made locally require re-syncing.
+
 ### Example Workflow: Training a Model
 
 **Local Machine Setup:**
@@ -266,11 +328,14 @@ print("Training complete!")
 EOF
 ```
 
-**Run on Colab GPU:**
+**Sync and Run on Colab GPU:**
 
 ```bash
+# Sync project to Colab
+colablink sync
+
 # Execute on Colab (output streams to your terminal)
-colablink exec python train.py
+colablink exec python my-ml-project/train.py
 ```
 
 **Output:**
@@ -643,6 +708,28 @@ colablink status
 
 ## Changelog
 
+### [1.1.0] - 2025-10-01
+
+#### Added
+
+**File Synchronization:**
+- `colablink sync` - Sync entire directory to Colab with smart exclusions
+- `colablink upload` - Upload specific files or directories
+- Automatic exclusion of common files (.git, __pycache__, venv, etc.)
+- Efficient tar-based compression for faster transfers
+- Custom destination support for uploads
+
+**Improvements:**
+- Better file management workflow
+- No need for manual scp commands
+- Streamlined development experience
+- Updated documentation with file sync examples
+
+**CLI Enhancements:**
+- Added `upload` subcommand with recursive support
+- Added `sync` subcommand with directory selection
+- Enhanced help text with sync examples
+
 ### [1.0.0] - 2025-09-30
 
 #### Complete Rewrite
@@ -802,6 +889,6 @@ For issues and questions:
 
 **Made for developers who want local development experience with cloud GPU power**
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Stable  
 **License:** MIT
