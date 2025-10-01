@@ -22,12 +22,13 @@ from typing import Optional, Dict, List
 class LocalClient:
     """Client for connecting local machine to Colab runtime."""
     
-    def __init__(self, config_file: Optional[str] = None):
+    def __init__(self, config_file: Optional[str] = None, auto_sync: bool = True):
         """
         Initialize local client.
         
         Args:
             config_file: Path to config file (default: ~/.colablink/config.json)
+            auto_sync: Enable automatic bidirectional file sync (default: True)
         """
         self.config_file = config_file or os.path.expanduser("~/.colablink/config.json")
         self.config_dir = os.path.dirname(self.config_file)
@@ -36,6 +37,7 @@ class LocalClient:
         self.port_forwards: List[subprocess.Popen] = []
         self.local_mount_point = os.path.join(self.config_dir, "colab_workspace")
         self.sync_process: Optional[subprocess.Popen] = None
+        self.auto_sync = auto_sync
         
     def initialize(self, connection_info: Dict):
         """
@@ -61,21 +63,40 @@ class LocalClient:
         if self._test_connection():
             print("Connection successful!")
             
-            # Setup bidirectional file sync
-            print("\nSetting up bidirectional file sync...")
-            self._setup_reverse_sshfs()
-            self._setup_local_mount()
+            if self.auto_sync:
+                # Setup automatic bidirectional file sync
+                print("\nSetting up automatic bidirectional file sync...")
+                self._setup_reverse_sshfs()
+                mount_success = self._setup_local_mount()
+                
+                print("\n" + "="*70)
+                print("READY TO USE!")
+                print("="*70)
+                if mount_success:
+                    print("\n  ✓ Automatic bidirectional sync ENABLED")
+                    print(f"  ✓ Colab files → Local: {self.local_mount_point}")
+                    print("\nFiles generated on Colab will appear automatically in:")
+                    print(f"  {self.local_mount_point}/")
+                else:
+                    print("\n  ⚠ Automatic sync unavailable (sshfs not installed)")
+                    print("  Use manual commands: upload, download, sync")
+            else:
+                # Manual sync mode
+                print("\n" + "="*70)
+                print("READY TO USE! (Manual sync mode)")
+                print("="*70)
+                print("\n" + "="*70)
+                print("⚠  MANUAL FILE SYNC MODE")
+                print("="*70)
+                print("\n  You must manually manage files:")
+                print(f"  • colablink upload <file>    - Push files to Colab")
+                print(f"  • colablink download <file>  - Pull files from Colab")
+                print(f"  • colablink sync             - Push entire directory")
+                print("\n" + "="*70)
             
-            print("\n" + "="*70)
-            print("READY TO USE!")
-            print("="*70)
-            print("\n  Local files → Colab: Synced automatically")
-            print(f"  Colab files → Local: {self.local_mount_point}")
             print("\nYou can now execute commands on Colab GPU:")
             print("  colablink exec python train.py")
             print("  colablink exec nvidia-smi")
-            print("\nFiles generated on Colab will appear in:")
-            print(f"  {self.local_mount_point}/")
             print("\nOr start a shell with transparent execution:")
             print("  colablink shell")
             print("\nOr use VS Code Remote-SSH:")
@@ -301,6 +322,61 @@ class LocalClient:
             return 0
         else:
             print(f"Upload failed: {result.stderr}")
+            return 1
+    
+    def download(self, source: str, destination: Optional[str] = None, recursive: bool = False):
+        """
+        Download files or directories from Colab to local machine.
+        
+        Args:
+            source: Remote file or directory path on Colab
+            destination: Local destination path (default: current directory)
+            recursive: Whether to download recursively for directories
+        """
+        self._load_config()
+        
+        if not self.config:
+            print("Error: Not connected. Run 'colablink init' first.")
+            return 1
+        
+        # Determine destination
+        if destination is None:
+            destination = os.getcwd()
+        
+        destination = os.path.abspath(destination)
+        
+        # Build scp command
+        scp_cmd = ["sshpass", "-p", f"'{self.config['password']}'", "scp"]
+        
+        # Add options
+        scp_cmd.extend([
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-P", str(self.config['port']),
+        ])
+        
+        # Add recursive flag if needed
+        if recursive:
+            scp_cmd.append("-r")
+        
+        # Add source and destination
+        scp_cmd.append(f"root@{self.config['host']}:{source}")
+        scp_cmd.append(destination)
+        
+        # Execute download
+        print(f"Downloading Colab:{source} to {destination}...")
+        result = subprocess.run(
+            " ".join(scp_cmd),
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            print(f"Download successful: {destination}")
+            return 0
+        else:
+            print(f"Download failed: {result.stderr}")
             return 1
     
     def sync(self, directory: Optional[str] = None, exclude: Optional[List[str]] = None):

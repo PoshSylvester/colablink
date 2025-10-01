@@ -17,17 +17,15 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Initialize connection to Colab
+  # Initialize connection to Colab (automatic sync enabled by default)
   colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "xxx", "mount_point": "/mnt/local"}'
   
-  # Sync current directory to Colab
-  colablink sync
+  # Files generated on Colab appear automatically in ~/.colablink/colab_workspace/
   
-  # Upload a specific file
-  colablink upload train.py
-  
-  # Upload a directory
-  colablink upload data/
+  # Manual file management (if auto-sync disabled):
+  colablink upload train.py        # Push file to Colab
+  colablink download /content/model.pt  # Pull file from Colab
+  colablink sync                   # Push entire directory
   
   # Execute a Python script on Colab GPU
   colablink exec python train.py
@@ -72,6 +70,12 @@ Examples:
     upload_parser.add_argument('source', help='Local file or directory to upload')
     upload_parser.add_argument('--destination', '-d', help='Remote destination path (default: /content/)')
     upload_parser.add_argument('--recursive', '-r', action='store_true', help='Upload directory recursively')
+    
+    # Download command
+    download_parser = subparsers.add_parser('download', help='Download file or directory from Colab')
+    download_parser.add_argument('source', help='Remote file or directory path on Colab')
+    download_parser.add_argument('--destination', '-d', help='Local destination path (default: current directory)')
+    download_parser.add_argument('--recursive', '-r', action='store_true', help='Download directory recursively')
     
     # Sync command
     sync_parser = subparsers.add_parser('sync', help='Sync current directory to Colab')
@@ -122,6 +126,13 @@ Examples:
     
     elif args.command == 'upload':
         return client.upload(
+            args.source,
+            destination=args.destination,
+            recursive=args.recursive
+        )
+    
+    elif args.command == 'download':
+        return client.download(
             args.source,
             destination=args.destination,
             recursive=args.recursive

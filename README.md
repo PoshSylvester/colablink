@@ -260,7 +260,22 @@ colablink disconnect
 
 ### File Synchronization
 
-ColabLink provides convenient commands to sync your local files to Colab:
+**By default, ColabLink automatically syncs files bidirectionally using SSHFS.** Files appear instantly in both directions without manual commands!
+
+If automatic sync is unavailable or disabled, ColabLink provides manual file management commands:
+
+#### Download Files from Colab
+
+```bash
+# Download a single file
+colablink download /content/model.pt
+
+# Download to specific location
+colablink download /content/model.pt --destination ./models/
+
+# Download entire directory
+colablink download /content/output/ --recursive
+```
 
 #### Sync Entire Directory
 
@@ -731,12 +746,19 @@ colablink status
 - No manual download commands needed
 - Real-time file synchronization in both directions
 - Automatic reconnection on network interruptions
+- Configurable: can enable/disable auto-sync via `auto_sync` parameter
+
+**Manual File Management:**
+- `colablink download` - Download files/directories from Colab to local
+- Manual sync mode with clear warnings when auto-sync is disabled
+- Explicit upload/download/sync commands for fine-grained control
 
 **Improvements:**
 - Seamless workflow - write code locally, see results locally
 - Trained models and outputs automatically available locally
 - Better developer experience with transparent file access
 - Graceful fallback to manual sync if SSHFS unavailable
+- Bold warnings when manual file management is required
 
 **Requirements:**
 - Added `sshfs` as optional but recommended dependency
