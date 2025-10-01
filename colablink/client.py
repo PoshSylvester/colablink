@@ -76,12 +76,12 @@ class LocalClient:
                 print("READY TO USE!")
                 print("="*70)
                 if mount_success:
-                    print("\n  ✓ Automatic bidirectional sync ENABLED")
-                    print(f"  ✓ Colab files → Local: {self.local_mount_point}")
+                    print("\n  [OK] Automatic bidirectional sync ENABLED")
+                    print(f"  [OK] Colab files → Local: {self.local_mount_point}")
                     print("\nFiles generated on Colab will appear automatically in:")
                     print(f"  {self.local_mount_point}/")
                 else:
-                    print("\n  ⚠ Automatic sync unavailable (sshfs not installed)")
+                    print("\n  [WARNING] Automatic sync unavailable (sshfs not installed)")
                     print("  Use manual commands: upload, download, sync")
             else:
                 # Manual sync mode
@@ -89,12 +89,12 @@ class LocalClient:
                 print("READY TO USE! (Manual sync mode)")
                 print("="*70)
                 print("\n" + "="*70)
-                print("⚠  MANUAL FILE SYNC MODE")
+                print("WARNING: MANUAL FILE SYNC MODE")
                 print("="*70)
                 print("\n  You must manually manage files:")
-                print(f"  • colablink upload <file>    - Push files to Colab")
-                print(f"  • colablink download <file>  - Pull files from Colab")
-                print(f"  • colablink sync             - Push entire directory")
+                print(f"  - colablink upload <file>    - Push files to Colab")
+                print(f"  - colablink download <file>  - Pull files from Colab")
+                print(f"  - colablink sync             - Push entire directory")
                 print("\n" + "="*70)
             
             print("\nYou can now execute commands on Colab GPU:")
@@ -323,12 +323,12 @@ class LocalClient:
         
         if result.returncode == 0:
             if is_directory:
-                print(f"✓ Directory uploaded successfully: {destination}")
+                print(f"[OK] Directory uploaded successfully: {destination}")
             else:
-                print(f"✓ File uploaded successfully: {destination}")
+                print(f"[OK] File uploaded successfully: {destination}")
             return 0
         else:
-            print(f"✗ Upload failed: {result.stderr}")
+            print(f"[ERROR] Upload failed: {result.stderr}")
             return 1
     
     def download(self, source: str, destination: Optional[str] = None, recursive: bool = False):
@@ -390,9 +390,9 @@ class LocalClient:
         
         if result.returncode == 0:
             if is_likely_directory:
-                print(f"✓ Directory downloaded successfully to: {destination}")
+                print(f"[OK] Directory downloaded successfully to: {destination}")
             else:
-                print(f"✓ File downloaded successfully to: {destination}")
+                print(f"[OK] File downloaded successfully to: {destination}")
             return 0
         else:
             # If it failed and we didn't use recursive, suggest trying with recursive
@@ -400,7 +400,7 @@ class LocalClient:
                 print(f"Note: '{source}' appears to be a directory.")
                 print(f"Retrying with recursive mode...")
                 return self.download(source, destination, recursive=True)
-            print(f"✗ Download failed: {result.stderr}")
+            print(f"[ERROR] Download failed: {result.stderr}")
             return 1
     
     def sync(self, directory: Optional[str] = None, exclude: Optional[List[str]] = None):
@@ -673,14 +673,14 @@ Host colablink
         
         if missing_deps:
             print("\n" + "="*70)
-            print("⚠  MISSING REQUIRED DEPENDENCIES")
+            print("WARNING: MISSING REQUIRED DEPENDENCIES")
             print("="*70)
             print("\nColabLink requires the following system packages:\n")
             
             system = platform.system()
             
             if "sshpass" in missing_deps:
-                print("  • sshpass (required for SSH authentication)")
+                print("  - sshpass (required for SSH authentication)")
                 
             if system == "Linux":
                 print("\nInstall with:")

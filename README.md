@@ -8,11 +8,11 @@ Connect your local IDE to Google Colab's GPU runtime. Work entirely locally with
 
 ## Why ColabLink?
 
-- 🔄 **Automatic Bidirectional Sync** - Files sync instantly in both directions
-- 💻 **Local Development** - Use your favorite IDE (VS Code, Cursor, PyCharm)
-- ⚡ **Real-time Streaming** - See output as it happens, no buffering
-- 🎮 **Free GPU Access** - Tesla T4/P100/V100 GPUs from Google Colab
-- 📦 **Zero Config** - One-line setup, works in minutes
+- **Automatic Bidirectional Sync** - Files sync instantly in both directions
+- **Local Development** - Use your favorite IDE (VS Code, Cursor, PyCharm)
+- **Real-time Streaming** - See output as it happens, no buffering
+- **Free GPU Access** - Tesla T4/P100/V100 GPUs from Google Colab
+- **Zero Config** - One-line setup, works in minutes
 
 ```
 Local Machine (Your IDE)  ←→  SSH Tunnel  ←→  Google Colab (Free GPU)
@@ -127,7 +127,7 @@ colablink download /content/output/       # Auto-recursive
 colablink download /content/data/ -d ./local_data/
 ```
 
-Smart detection: automatically handles files vs directories.
+Smart detection: Automatically handles files vs directories.
 
 </details>
 
@@ -327,26 +327,26 @@ runtime = ColabRuntime(
 
 ### [1.2.0] - 2025-10-01
 
-- ✨ Automatic bidirectional file sync via SSHFS
-- ✨ `colablink download` command for pulling files
-- ✨ Auto-detection of files vs directories
-- ✨ Real-time unbuffered output streaming
-- 🐛 Fixed jagged output display
-- 📚 Comprehensive command documentation
+- Automatic bidirectional file sync via SSHFS
+- `colablink download` command for pulling files
+- Auto-detection of files vs directories
+- Real-time unbuffered output streaming
+- Fixed jagged output display
+- Comprehensive command documentation
 
 ### [1.1.0] - 2025-10-01
 
-- ✨ `colablink upload` and `colablink sync` commands
-- ✨ Smart file exclusions (.git, __pycache__, etc.)
-- ✨ Tar-based efficient compression
+- `colablink upload` and `colablink sync` commands
+- Smart file exclusions (.git, __pycache__, etc.)
+- Tar-based efficient compression
 
 ### [1.0.0] - 2025-09-30
 
-- 🎉 Initial release
-- ✨ SSH-based connection to Colab
-- ✨ Real-time command execution
-- ✨ GPU environment auto-configuration
-- ✨ Port forwarding support
+- Initial release
+- SSH-based connection to Colab
+- Real-time command execution
+- GPU environment auto-configuration
+- Port forwarding support
 
 [Full changelog →](https://github.com/PoshSylvester/colablink/releases)
 
@@ -371,7 +371,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Made for developers who want local development with cloud GPU power** 🚀
+**Made for developers who want local development with cloud GPU power**
 
 **Version:** 1.2.0 | **Status:** Stable | **License:** MIT
 
