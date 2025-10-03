@@ -59,7 +59,7 @@ Run Jupyter on Colab, access from local browser:
 
 ```bash
 # Terminal 1: Start Jupyter on Colab
-colablink exec "jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root"
+colablink exec "jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser"
 
 # Terminal 2: Forward port
 colablink forward 8888
@@ -92,7 +92,7 @@ Start interactive Python session on Colab:
 colablink shell
 
 # Now you're in Colab's shell
-root@colab:~# python
+colablink@colab:~$ python
 >>> import torch
 >>> torch.cuda.is_available()
 True
@@ -133,7 +133,7 @@ torch.save(model, './models/model.pt')
 Set environment variables on Colab:
 ```bash
 colablink exec "export CUDA_VISIBLE_DEVICES=0"
-colablink exec "export TRANSFORMERS_CACHE=/content/cache"
+colablink exec "export TRANSFORMERS_CACHE=~/cache"
 ```
 
 ### Checking GPU Usage
@@ -183,4 +183,3 @@ Check out these real-world use cases:
 - Multi-GPU training
 
 See full examples in the `examples/` directory.
-

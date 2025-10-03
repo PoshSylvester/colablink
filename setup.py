@@ -40,4 +40,3 @@ setup(
     ],
     keywords="colab jupyter gpu remote development vscode cursor link",
 )
-

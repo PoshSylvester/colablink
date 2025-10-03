@@ -13,19 +13,21 @@ import subprocess
 import json
 import time
 import threading
+import uuid
 from pathlib import Path
 
 
 class ColabRuntime:
     """Sets up Colab runtime to accept connections from local machine."""
-    
-    def __init__(self, password=None, ngrok_token=None):
+
+    def __init__(self, password=None, ngrok_token=None, username: str = "colablink"):
         """
         Initialize Colab runtime.
-        
+
         Args:
             password: SSH password for connection (required)
             ngrok_token: ngrok authtoken for tunnel creation (optional but recommended)
+            username: SSH user created on the runtime (default: "colablink")
         """
         self.password = password or self._generate_password()
         self.ngrok_token = ngrok_token
@@ -33,53 +35,56 @@ class ColabRuntime:
         self.ssh_port = 22
         self.sshfs_port = 2222
         self.keep_alive_thread = None
-        
+        self.username = self._sanitize_username(username)
+        self.session_id = None
+        self.workspace_root = None
+
     def setup(self):
         """
         Main setup method - run this in Colab notebook.
-        
+
         This will:
         1. Install required packages
         2. Setup SSH server
         3. Create ngrok tunnel
         4. Display connection instructions
         """
-        print("="*70)
-        print("ColabLink - Setting up GPU runtime...")
-        print("="*70)
-        
+        print("=" * 70)
+        print("ColabLink - Setting up runtime...")
+        print("=" * 70)
+
         try:
             # Check if we're in Colab
             self._check_colab_environment()
-            
+
             # Show GPU info
             self._display_gpu_info()
-            
+
             # Install dependencies
             print("\n[1/4] Installing dependencies...")
             self._install_dependencies()
-            
+
             # Setup SSH server
             print("\n[2/4] Configuring SSH server...")
             self._setup_ssh_server()
-            
+
             # Create ngrok tunnel
             print("\n[3/4] Creating secure tunnel...")
             self._create_tunnel()
-            
+
             # Display connection info
             print("\n[4/4] Setup complete!")
             self._display_connection_info()
-            
+
             # Start keep-alive
             self._start_keep_alive()
-            
+
             return self.connection_info
-            
+
         except Exception as e:
             print(f"\nError during setup: {e}")
             raise
-    
+
     def keep_alive(self):
         """
         Keep the Colab session alive.
@@ -92,23 +97,31 @@ class ColabRuntime:
                 time.sleep(60)
         except KeyboardInterrupt:
             print("\nShutting down runtime...")
-    
+
     def _check_colab_environment(self):
         """Check if running in Google Colab."""
         try:
+            from importlib.util import find_spec
+
+            if find_spec("google.colab") is None:
+                raise ImportError
             return True
         except ImportError:
             print("\nWarning: Not running in Google Colab environment.")
             print("This tool is designed for Colab but will attempt to continue...")
             return False
-    
+
     def _display_gpu_info(self):
         """Display available GPU information."""
         try:
             result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                [
+                    "nvidia-smi",
+                    "--query-gpu=name,memory.total",
+                    "--format=csv,noheader",
+                ],
                 capture_output=True,
-                text=True
+                text=True,
             )
             if result.returncode == 0:
                 gpu_info = result.stdout.strip()
@@ -117,35 +130,36 @@ class ColabRuntime:
                 print("\nNo GPU detected. Code will run on CPU.")
         except FileNotFoundError:
             print("\nNo GPU detected. Code will run on CPU.")
-    
+
     def _install_dependencies(self):
         """Install required system packages."""
         packages = [
             "openssh-server",
             "sshfs",
             "fuse",
+            "rsync",
         ]
-        
+
         # Fix any broken packages first
         print("   Fixing broken packages...")
         subprocess.run(
             ["apt-get", "-f", "install", "-y"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
-        
+
         # Update package list
         print("   Updating package list...")
         result = subprocess.run(
             ["apt-get", "update", "-qq"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         if result.returncode != 0:
             print(f"   Warning: apt-get update had issues: {result.stderr[:200]}")
-        
+
         # Install packages one by one for better error handling
         print("   Installing SSH server and dependencies...")
         for package in packages:
@@ -153,25 +167,31 @@ class ColabRuntime:
                 ["apt-get", "install", "-qq", "-y", "--fix-missing", package],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
             if result.returncode != 0:
                 # Try with dpkg configure first
                 subprocess.run(
                     ["dpkg", "--configure", "-a"],
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
+                    stderr=subprocess.PIPE,
                 )
                 # Retry installation
                 result = subprocess.run(
                     ["apt-get", "install", "-qq", "-y", "--fix-broken", package],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True
+                    text=True,
                 )
                 if result.returncode != 0:
-                    print(f"   Warning: Failed to install {package}: {result.stderr[:200]}")
-        
+                    print(
+                        f"   Warning: Failed to install {package}: {result.stderr[:200]}"
+                    )
+                    print(
+                        "   Try running manually in a Colab cell: "
+                        f"!apt-get install -y {package}"
+                    )
+
         # Verify sshd exists
         if not os.path.exists("/usr/sbin/sshd"):
             raise FileNotFoundError(
@@ -182,43 +202,21 @@ class ColabRuntime:
                 "  !apt-get install -y openssh-server\n"
                 "Then retry the setup."
             )
-        
+
         # Install pyngrok if not already installed
-        subprocess.run(
-            ["pip", "install", "-q", "pyngrok"],
-            stdout=subprocess.DEVNULL
-        )
-        
+        subprocess.run(["pip", "install", "-q", "pyngrok"], stdout=subprocess.DEVNULL)
+
         print("   Dependencies installed successfully")
-    
+
     def _setup_ssh_server(self):
         """Configure and start SSH server."""
-        # Set root password
-        print("   Setting root password...")
-        result = subprocess.run(
-            ["bash", "-c", f"echo 'root:{self.password}' | chpasswd"],
-            capture_output=True,
-            text=True
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to set password: {result.stderr}")
-        
-        # Configure SSH
-        print("   Configuring SSH server...")
-        ssh_config = """
-PermitRootLogin yes
-PasswordAuthentication yes
-PubkeyAuthentication yes
-"""
-        try:
-            with open("/etc/ssh/sshd_config", "a") as f:
-                f.write(ssh_config)
-        except Exception as e:
-            raise RuntimeError(f"Failed to configure SSH: {e}")
-        
-        # Create necessary directories
-        os.makedirs("/var/run/sshd", exist_ok=True)
-        
+        self.session_id = uuid.uuid4().hex[:8]
+        self.workspace_root = f"/content/colablink_{self.session_id}"
+
+        self._ensure_user()
+        self._configure_ssh()
+        self._prepare_workspace()
+
         # Setup environment for SSH sessions (GPU/CUDA access)
         print("   Configuring environment for GPU access...")
         env_setup = """
@@ -228,103 +226,197 @@ export PATH=/usr/local/cuda/bin:$PATH
 export CUDA_HOME=/usr/local/cuda
 """
         try:
-            # Add to root's .bashrc
-            with open("/root/.bashrc", "a") as f:
+            user_home = Path("/home") / self.username
+            bashrc_path = user_home / ".bashrc"
+            bashrc_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(bashrc_path, "a") as f:
                 f.write(env_setup)
-            
-            # Also create .bash_profile that sources .bashrc
-            with open("/root/.bash_profile", "w") as f:
+
+            bash_profile_path = user_home / ".bash_profile"
+            with open(bash_profile_path, "w") as f:
                 f.write("if [ -f ~/.bashrc ]; then source ~/.bashrc; fi\n")
         except Exception as e:
             print(f"   Warning: Could not setup environment: {e}")
-        
+
         # Start SSH service
         print("   Starting SSH daemon...")
-        result = subprocess.run(
-            ["/usr/sbin/sshd"],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["/usr/sbin/sshd"], capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"Failed to start SSH server: {result.stderr}")
-        
+
         print("   SSH server running on port 22")
-    
+
+    def _ensure_user(self):
+        """Create dedicated user account for ColabLink access."""
+        print(f"   Creating user '{self.username}'...")
+
+        # Create user if missing
+        user_home = Path("/home") / self.username
+        if not user_home.exists():
+            result = subprocess.run(
+                ["useradd", "-m", "-s", "/bin/bash", self.username],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"Failed to create user: {result.stderr}")
+
+        # Set password for the user
+        result = subprocess.run(
+            ["bash", "-c", f"echo '{self.username}:{self.password}' | chpasswd"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to set password: {result.stderr}")
+
+    def _configure_ssh(self):
+        """Harden SSH configuration for ColabLink."""
+        print("   Configuring SSH server...")
+
+        os.makedirs("/var/run/sshd", exist_ok=True)
+
+        base_config_path = Path("/etc/ssh/sshd_config")
+        backup_path = base_config_path.with_suffix(".colablink.bak")
+        try:
+            if not backup_path.exists():
+                backup_path.write_text(base_config_path.read_text())
+        except Exception:
+            # Backups are best-effort and should not stop execution
+            pass
+
+        desired_settings = {
+            "PermitRootLogin": "no",
+            "PasswordAuthentication": "yes",
+            "PubkeyAuthentication": "yes",
+        }
+
+        config_lines = base_config_path.read_text().splitlines()
+        updated_lines = []
+        for line in config_lines:
+            key = line.split()[0] if line.strip() else ""
+            if key in desired_settings:
+                updated_lines.append(f"{key} {desired_settings.pop(key)}")
+            else:
+                updated_lines.append(line)
+
+        for key, value in desired_settings.items():
+            updated_lines.append(f"{key} {value}")
+
+        base_config_path.write_text("\n".join(updated_lines) + "\n")
+
+    def _prepare_workspace(self):
+        """Create remote workspace owned by the dedicated user."""
+        print("   Preparing remote workspace directory...")
+        workspace_path = Path(self.workspace_root)
+        workspace_path.parent.mkdir(parents=True, exist_ok=True)
+
+        result = subprocess.run(
+            ["mkdir", "-p", str(workspace_path)], capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"Failed to create workspace: {result.stderr}")
+
+        subprocess.run(
+            ["chown", "-R", f"{self.username}:{self.username}", str(workspace_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
     def _create_tunnel(self):
         """Create ngrok tunnel for SSH access."""
         from pyngrok import ngrok
-        
+
         # Set auth token if provided
         if self.ngrok_token:
             ngrok.set_auth_token(self.ngrok_token)
-        
+
         # Kill any existing tunnels
         ngrok.kill()
-        
+
         # Create SSH tunnel
         tunnel = ngrok.connect(self.ssh_port, "tcp")
-        
+
         # Parse tunnel URL: tcp://0.tcp.ngrok.io:12345
         tunnel_url = tunnel.public_url.replace("tcp://", "")
         host, port = tunnel_url.split(":")
-        
+
         self.connection_info = {
             "host": host,
             "port": port,
-            "password": self.password
+            "password": self.password,
+            "username": self.username,
+            "workspace": self.workspace_root,
         }
-        
+
         print(f"   Tunnel created: {host}:{port}")
-    
+
     def _generate_password(self):
         """Generate a random secure password."""
         import random
         import string
+
         chars = string.ascii_letters + string.digits
-        return ''.join(random.choice(chars) for _ in range(16))
-    
+        return "".join(random.choice(chars) for _ in range(16))
+
+    def _sanitize_username(self, username: str) -> str:
+        """Ensure provided username is safe for useradd."""
+        import re
+
+        if not username:
+            return "colablink"
+
+        candidate = re.sub(r"[^a-z0-9_-]", "", username.lower())
+        if not candidate:
+            return "colablink"
+
+        # useradd generally expects <= 32 characters
+        return candidate[:32]
+
     def _display_connection_info(self):
         """Display connection instructions for local machine."""
         config_json = json.dumps(self.connection_info)
-        
-        print("\n" + "="*70)
+
+        print("\n" + "=" * 70)
         print("SETUP COMPLETE - Runtime Ready!")
-        print("="*70)
+        print("=" * 70)
         print("\nConnection Details:")
         print(f"  Host: {self.connection_info['host']}")
         print(f"  Port: {self.connection_info['port']}")
+        print(f"  User: {self.connection_info['username']}")
         print(f"  Password: {self.connection_info['password']}")
-        
-        print("\n" + "-"*70)
+        print(f"  Remote workspace: {self.connection_info['workspace']}")
+
+        print("\n" + "-" * 70)
         print("CONNECT FROM YOUR LOCAL MACHINE:")
-        print("-"*70)
-        
+        print("-" * 70)
+
         print("\n1. Install colablink on your local machine:")
         print("   pip install colablink")
-        
+
         print("\n2. Initialize connection (copy-paste this command):")
         print(f"\n   colablink init '{config_json}'")
-        
+
         print("\n3. Execute commands on Colab GPU from your local terminal:")
         print("   colablink exec python train.py")
         print("   colablink exec nvidia-smi")
-        
+
         print("\n4. Or use shell wrapper for transparent execution:")
         print("   colablink shell")
         print("   python train.py  # Runs on Colab GPU automatically")
-        
-        print("\n" + "="*70)
+
+        print("\n" + "=" * 70)
         print("\nKeep this cell running to maintain the connection!")
-        print("="*70)
-    
+        print("=" * 70)
+
     def _start_keep_alive(self):
         """Start background thread to keep session alive."""
+
         def keep_alive_task():
             while True:
                 time.sleep(300)  # Every 5 minutes
                 # Trigger some activity to prevent disconnect
                 subprocess.run(["echo", "keep-alive"], stdout=subprocess.DEVNULL)
-        
+
         self.keep_alive_thread = threading.Thread(target=keep_alive_task, daemon=True)
         self.keep_alive_thread.start()
-
