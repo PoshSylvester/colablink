@@ -112,6 +112,8 @@ Thumbs.db
 # Project specific
 .colabconnect/
 colab-workspace/
+my-colab-files/
+.colablink/
 *.pt
 *.pth
 *.h5
@@ -120,4 +122,3 @@ data/
 runs/
 logs/
 checkpoints/
-

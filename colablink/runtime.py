@@ -413,6 +413,12 @@ export CUDA_HOME=/usr/local/cuda
         print("   colablink shell")
         print("   python train.py  # Runs on Colab runtime automatically")
 
+        print("\nOptional flags:")
+        print("   --mount-dir ./my-colab-files        # Local mirror of Colab workspace")
+        print(
+            "   --remote-dir /content/colablink_xxxx/outputs  # Change remote working directory"
+        )
+
         print("\n" + "=" * 70)
         print("\nKeep this cell running to maintain the connection!")
         print("=" * 70)

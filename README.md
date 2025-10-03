@@ -105,6 +105,7 @@ ls colab-workspace/  # See your models, outputs, etc.
 | `forward` | Port forwarding | `colablink forward 8888` |
 | `--version` | Show installed version | `colablink --version` |
 | `--help` | Display CLI help | `colablink --help` |
+| `--remote-dir` | Set remote working directory during init | `colablink init '{...}' --remote-dir /content/colablink_xxxx/outputs` |
 
 ### Detailed Usage
 

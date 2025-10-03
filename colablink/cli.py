@@ -88,6 +88,10 @@ Examples:
         default="./colab-workspace",
         help="Local directory to mount Colab files (default: ./colab-workspace)",
     )
+    init_parser.add_argument(
+        "--remote-dir",
+        help="Remote working directory inside Colab (default: workspace reported by runtime)",
+    )
 
     # Exec command
     exec_parser = subparsers.add_parser(
@@ -229,7 +233,7 @@ Output streams in real-time to your terminal.""",
     if args.command == "init":
         try:
             config = json.loads(args.config)
-            client.initialize(config)
+            client.initialize(config, remote_workdir=args.remote_dir)
         except json.JSONDecodeError:
             print("Error: Invalid JSON config string")
             return 1

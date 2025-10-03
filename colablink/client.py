@@ -43,6 +43,7 @@ class LocalClient:
         self.port_forwards: List[subprocess.Popen] = []
         self.project_root: Optional[Path] = None
         self.remote_workspace: Optional[str] = None
+        self.remote_workdir: Optional[str] = None
 
         # Default local mount to ./colab-workspace in current directory
         if local_mount_dir is None:
@@ -67,7 +68,11 @@ class LocalClient:
         ]
         self.has_rsync = True
 
-    def initialize(self, connection_info: Dict):
+    def initialize(
+        self,
+        connection_info: Dict,
+        remote_workdir: Optional[str] = None,
+    ):
         """Initialize connection to Colab runtime."""
         print("Initializing connection to Colab runtime...")
 
@@ -80,9 +85,14 @@ class LocalClient:
         self.project_root = Path(os.getcwd()).resolve()
 
         username = connection_info.get("username", "root")
-        remote_workspace = connection_info.get("workspace")
-        if remote_workspace is None:
-            remote_workspace = f"/content/{self.project_root.name}"
+        remote_workspace = (
+            connection_info.get("remote_workspace")
+            or connection_info.get("workspace")
+            or f"/content/{self.project_root.name}"
+        )
+        remote_workdir = remote_workdir or connection_info.get("remote_workdir")
+        if not remote_workdir:
+            remote_workdir = remote_workspace
 
         # Persist configuration enriched with local metadata
         self.config = {
@@ -90,13 +100,17 @@ class LocalClient:
             "username": username,
             "project_root": str(self.project_root),
             "remote_workspace": remote_workspace,
+            "remote_workdir": remote_workdir,
             "auto_sync": self.auto_sync,
         }
         self.remote_workspace = remote_workspace
+        self.remote_workdir = remote_workdir
 
         self._save_config()
         self._setup_ssh_config()
         self._ensure_remote_workspace()
+        if self.remote_workdir:
+            self._ensure_remote_directory(self.remote_workdir)
 
         # Test connection
         print("\nTesting connection...")
@@ -247,8 +261,14 @@ class LocalClient:
         print("Type 'exit' to return to local shell.\n")
 
         # Start interactive SSH session
-        ssh_cmd = self._build_ssh_command(interactive=True)
-        subprocess.call(ssh_cmd)
+        remote_dir = self.remote_workdir or self.remote_workspace or "/content"
+        ssh_cmd = self._build_ssh_command(force_tty=True)
+        remote_shell_cmd = [
+            "bash",
+            "-lc",
+            f"cd {shlex.quote(remote_dir)} && exec bash -l",
+        ]
+        subprocess.call(ssh_cmd + remote_shell_cmd)
 
     def forward_port(self, remote_port: int, local_port: Optional[int] = None):
         """
@@ -594,6 +614,12 @@ class LocalClient:
                 remote_default = self.config.get("workspace", "/content")
                 self.config.setdefault("remote_workspace", remote_default)
                 self.auto_sync = self.config.get("auto_sync", self.auto_sync)
+                self.remote_workspace = self.config.get(
+                    "remote_workspace", remote_default
+                )
+                self.remote_workdir = self.config.get(
+                    "remote_workdir", self.remote_workspace
+                )
 
     def _save_config(self):
         """Save configuration to file."""
@@ -673,7 +699,7 @@ Host colablink
             print(f"   Colab directory already mounted at: {self.local_mount_point}")
             return True
 
-        remote_path = self.remote_workspace or "/content"
+        remote_path = self.remote_workdir or self.remote_workspace or "/content"
         print(
             f"   Mounting Colab workspace ({remote_path}) to: {self.local_mount_point}"
         )
@@ -948,7 +974,9 @@ Host colablink
     def _map_local_to_remote(self, local_path: str) -> str:
         """Translate a local path to its remote workspace counterpart."""
         remote_base = PurePosixPath(
-            self.remote_workspace or self.config.get("workspace", "/content")
+            self.remote_workdir
+            or self.remote_workspace
+            or self.config.get("workspace", "/content")
         )
         project_root = Path(self.config.get("project_root", os.getcwd())).resolve()
         local_path_obj = Path(local_path).resolve()
@@ -967,10 +995,14 @@ Host colablink
     def _resolve_remote_path(self, remote_path: str) -> str:
         """Return an absolute remote path inside the workspace."""
         if not remote_path:
-            return str(PurePosixPath(self.remote_workspace or "/content"))
+            return str(PurePosixPath(
+                self.remote_workdir or self.remote_workspace or "/content"
+            ))
         if remote_path.startswith("/"):
             return remote_path
-        base = PurePosixPath(self.remote_workspace or "/content")
+        base = PurePosixPath(
+            self.remote_workdir or self.remote_workspace or "/content"
+        )
         return str(base.joinpath(PurePosixPath(remote_path)))
 
     def _build_ssh_command(
@@ -1043,6 +1075,10 @@ Host colablink
         self.remote_workspace = self.config.get(
             "remote_workspace", self.config.get("workspace", "/content")
         )
+        if not self.remote_workdir:
+            self.remote_workdir = self.config.get(
+                "remote_workdir", self.remote_workspace
+            )
         remote_path = shlex.quote(self.remote_workspace)
         ssh_cmd = self._build_ssh_command()
         subprocess.run(
@@ -1138,7 +1174,7 @@ Host colablink
             return 1
 
         project_root = Path(self.config.get("project_root", os.getcwd())).resolve()
-        remote_path = self.remote_workspace or "/content"
+        remote_path = self.remote_workdir or self.remote_workspace or "/content"
         self._ensure_remote_directory(remote_path)
 
         if initial:
