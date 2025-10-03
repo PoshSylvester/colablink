@@ -633,7 +633,7 @@ Host colablink
         """Test SSH connection to Colab."""
         ssh_cmd = self._build_ssh_command()
         result = subprocess.run(
-            ssh_cmd + ["bash", "-lc", "echo connection_test"],
+            ssh_cmd + ["echo", "connection_test"],
             capture_output=True,
             text=True,
         )
