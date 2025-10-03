@@ -300,7 +300,7 @@ class LocalClient:
         if self._test_connection(verbose=False):
             print("  Status: Connected")
             self._clean_port_forwards()
-            
+
             # Get GPU info
             result = subprocess.run(
                 self._build_ssh_command()
@@ -875,9 +875,7 @@ Host colablink
             )
 
             if result.returncode != 0:
-                print(
-                    f"[auto-install] apt-get install failed: {result.stderr.strip()}"
-                )
+                print(f"[auto-install] apt-get install failed: {result.stderr.strip()}")
                 return False
 
             return True

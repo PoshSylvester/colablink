@@ -75,7 +75,10 @@ Examples:
         help="Initialize connection to Colab runtime",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Initialize connection to Colab runtime and set up automatic file sync.",
-        epilog='Example: colablink init \'{"host": "0.tcp.ngrok.io", "port": "12345", "password": "mypass"}\'',
+        epilog="""Examples:
+  colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "mypass"}'
+  colablink init '{...}' --mount-dir ./my-colab-files
+""",
     )
     init_parser.add_argument(
         "config", help="Connection config JSON string from Colab output"
