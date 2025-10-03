@@ -26,7 +26,7 @@ class ColabRuntime:
 
         Args:
             password: SSH password for connection (required)
-            ngrok_token: ngrok authtoken for tunnel creation (optional but recommended)
+            ngrok_token: ngrok authtoken for tunnel creation (required)
             username: SSH user created on the runtime (default: "colablink")
         """
         self.password = password or self._generate_password()

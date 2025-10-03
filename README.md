@@ -37,8 +37,14 @@ On first run, ColabLink attempts to install any missing system dependencies (`ss
 ```python
 !pip install colablink
 
+from getpass import getpass
 from colablink import ColabRuntime
-runtime = ColabRuntime(password="your_password")  # Optional: username="alice"
+
+ngrok_token = getpass("Enter your ngrok authtoken: ")
+runtime = ColabRuntime(
+    password="your_password",
+    ngrok_token=ngrok_token,
+)  # Optional: username="alice"
 runtime.setup()
 runtime.keep_alive()
 ```
