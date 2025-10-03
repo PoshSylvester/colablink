@@ -223,7 +223,7 @@ Preview changes before a full sync with `colablink sync --dry-run`.
 # Sync project
 colablink sync
 
-# Train on Colab GPU
+# Train on Colab runtime
 colablink exec python examples/train_mnist.py
 
 # Model appears locally as soon as training ends
@@ -236,7 +236,7 @@ ls mnist_model.pt
 # Start shell on Colab
 colablink shell
 
-# Now you're on Colab with GPU access:
+# Now you're on Colab with runtime access:
 colablink@colab:~$ nvidia-smi
 colablink@colab:~$ python
 >>> import torch
@@ -414,6 +414,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-**Made for developers who want local development with cloud GPU power**
 
 **Version:** 1.0.0 | **Status:** Beta | **License:** MIT

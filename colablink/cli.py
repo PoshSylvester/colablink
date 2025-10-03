@@ -23,7 +23,7 @@ class ColablinkArgumentParser(argparse.ArgumentParser):
 def main():
     """Main CLI entry point."""
     parser = ColablinkArgumentParser(
-        description="ColabLink - Execute code on Google Colab GPU from your local terminal",
+        description="ColabLink - Execute code on Google Colab runtime from your local terminal",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -42,7 +42,7 @@ Examples:
   colablink download /content/output/    # Pull directory (auto-detected)
   colablink sync                         # Push entire directory
   
-  # Execute a Python script on Colab GPU
+  # Execute a Python script on Colab runtime
   colablink exec python train.py
   
   # Check GPU status
@@ -89,7 +89,7 @@ Examples:
     # Exec command
     exec_parser = subparsers.add_parser(
         "exec",
-        help="Execute command on Colab GPU",
+        help="Execute command on Colab runtime",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Execute any command on Google Colab runtime with real-time output streaming.",
         epilog="""Common commands:

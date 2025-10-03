@@ -402,13 +402,13 @@ export CUDA_HOME=/usr/local/cuda
         print("\n2. Initialize connection (copy-paste this command):")
         print(f"\n   colablink init '{config_json}'")
 
-        print("\n3. Execute commands on Colab GPU from your local terminal:")
+        print("\n3. Execute commands on Colab runtime from your local terminal:")
         print("   colablink exec python train.py")
         print("   colablink exec nvidia-smi")
 
         print("\n4. Or use shell wrapper for transparent execution:")
         print("   colablink shell")
-        print("   python train.py  # Runs on Colab GPU automatically")
+        print("   python train.py  # Runs on Colab runtime automatically")
 
         print("\n" + "=" * 70)
         print("\nKeep this cell running to maintain the connection!")
