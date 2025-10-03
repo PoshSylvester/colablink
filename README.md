@@ -103,6 +103,8 @@ ls colab-workspace/  # See your models, outputs, etc.
 | Command | Purpose | Example |
 |---------|---------|---------|
 | `forward` | Port forwarding | `colablink forward 8888` |
+| `--version` | Show installed version | `colablink --version` |
+| `--help` | Display CLI help | `colablink --help` |
 
 ### Detailed Usage
 

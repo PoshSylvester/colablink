@@ -8,11 +8,21 @@ import sys
 import json
 import argparse
 from .client import LocalClient
+from . import __version__
+
+
+class ColablinkArgumentParser(argparse.ArgumentParser):
+    """Custom parser that prints full help on errors."""
+
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        self.print_help(sys.stderr)
+        self.exit(2, f"\nError: {message}\n")
 
 
 def main():
     """Main CLI entry point."""
-    parser = argparse.ArgumentParser(
+    parser = ColablinkArgumentParser(
         description="ColabLink - Execute code on Google Colab GPU from your local terminal",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -47,6 +57,14 @@ Examples:
   # Forward Jupyter port to local
   colablink forward 8888
 """,
+    )
+
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"colablink {__version__}",
+        help="Show the installed ColabLink version and exit.",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
