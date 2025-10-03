@@ -325,6 +325,11 @@ export CUDA_HOME=/usr/local/cuda
 
     def _create_tunnel(self):
         """Create ngrok tunnel for SSH access."""
+        if not self.ngrok_token:
+            raise RuntimeError(
+                "ngrok authtoken required. Set ngrok_token when constructing ColabRuntime."
+            )
+
         from pyngrok import ngrok
 
         # Set auth token if provided

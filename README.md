@@ -335,12 +335,13 @@ After `colablink init`, use VS Code's Remote-SSH extension:
 
 Configuration is automatically added to `~/.ssh/config`.
 
-### Custom ngrok Token (Recommended)
+### ngrok Authtoken (Required)
 
-For stable connections:
+ngrok requires authentication for all tunnels. Before running the Colab setup notebook:
 
 1. Get free token at https://ngrok.com
-2. Use in Colab:
+2. Verify your email with ngrok
+3. Use the token in Colab:
 
 ```python
 runtime = ColabRuntime(
