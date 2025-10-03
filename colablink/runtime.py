@@ -398,9 +398,12 @@ export CUDA_HOME=/usr/local/cuda
 
         print("\n1. Install colablink on your local machine:")
         print("   pip install colablink")
+        print("   # or: pip install git+https://github.com/PoshSylvester/colablink.git")
 
         print("\n2. Initialize connection (copy-paste this command):")
         print(f"\n   colablink init '{config_json}'")
+        print("\n   # Optional: mirror Colab files to a custom path")
+        print(f"   colablink init '{config_json}' --mount-dir ./my-colab-files")
 
         print("\n3. Execute commands on Colab runtime from your local terminal:")
         print("   colablink exec python train.py")
