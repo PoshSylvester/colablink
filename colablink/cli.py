@@ -31,12 +31,12 @@ Examples:
   # Initialize connection to Colab with auto-generated directory
   colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "xxx"}'
   
-  # Initialize with custom directories
-  colablink init '{...}' --remote-dir training --local-dir train_outputs
+  # Initialize with custom directories and profiles
+  colablink --profile train init '{...}' --remote-dir training --local-dir train_outputs
   
   # Execute commands on Colab runtime
   colablink exec python train.py
-  colablink exec nvidia-smi
+  colablink --profile train exec nvidia-smi
   
   # Manual file transfer
   colablink upload train.py              # Upload file to Colab
@@ -76,8 +76,8 @@ Examples:
         description="Initialize connection to Colab runtime and set up automatic file sync.",
         epilog="""Examples:
         colablink init '{"host": "...", "port": "...", "username": "...", "password": "...", "remote_root": "/content"}'
-        colablink init '{...}' --remote-dir training --local-dir train_outputs --profile exp1
-        colablink init '{...}' --remote-root /content/workspace --remote-dir experiment1
+        colablink --profile train init '{...}' --remote-dir training --local-dir train_outputs
+        colablink --profile exp init '{...}' --remote-root /content/workspace --remote-dir experiment1
         """,
     )
     init_parser.add_argument(

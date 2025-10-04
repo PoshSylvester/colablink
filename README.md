@@ -91,8 +91,8 @@ Copy the connection JSON from Colab output:
 colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "secure_password_123", "username": "colablink", "remote_root": "/content"}'
 
 # Custom connection directories for multiple projects
-colablink init '{...}' --remote-dir training --local-dir train_outputs --profile train
-colablink init '{...}' --remote-dir experiments --local-dir exp_outputs --profile exp
+colablink --profile train init '{...}' --remote-dir training --local-dir train_outputs
+colablink --profile exp init '{...}' --remote-dir experiments --local-dir exp_outputs
 ```
 
 ### 4. Start Using
@@ -146,15 +146,15 @@ Connect multiple local sessions to the same Colab runtime with isolated output d
 
 ```bash
 # Connection 1: Training project
-colablink init '{...}' --remote-dir training --local-dir train_outputs --profile train
+colablink --profile train init '{...}' --remote-dir training --local-dir train_outputs
 
 # Connection 2: Experiments project
-colablink init '{...}' --remote-dir experiments --local-dir exp_outputs --profile exp
+colablink --profile exp init '{...}' --remote-dir experiments --local-dir exp_outputs
 
 # Use specific connections
-colablink exec --profile train python train.py
-colablink exec --profile exp python experiment.py
-colablink watch --profile train  # Keep training synced
+colablink --profile train exec python train.py
+colablink --profile exp exec python experiment.py
+colablink --profile train watch  # Keep training synced
 ```
 
 Each connection maintains its own:
@@ -201,10 +201,10 @@ colablink watch --debounce 0.5 --interval 2.0
 
 ```bash
 # Setup (connection directories created during local init)
-colablink init '{...}' --remote-dir ml_training --local-dir ml_training --profile train
+colablink --profile train init '{...}' --remote-dir ml_training --local-dir ml_training
 
 # Train model on GPU
-colablink exec --profile train python train_model.py
+colablink --profile train exec python train_model.py
 
 # Model files appear locally instantly
 ls ml_training/
@@ -283,7 +283,7 @@ runtime = ColabRuntime(
 connection_info = runtime.setup()
 
 # Then on local machine
-colablink init '{connection_info}' --remote-dir experiment1
+colablink --profile exp1 init '{connection_info}' --remote-dir experiment1
 # Creates: /content/workspace/experiment1/
 ```
 
@@ -298,7 +298,7 @@ colablink status
 # Reconnect if Colab session expired
 # 1. Rerun the Colab setup cell
 # 2. Copy the new connection JSON
-# 3. Run: colablink init '{new_connection_info}' --remote-dir your_project
+# 3. Run: colablink --profile your_project init '{new_connection_info}' --remote-dir your_project
 ```
 
 ### Missing Dependencies
