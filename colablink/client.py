@@ -92,7 +92,7 @@ class LocalClient:
         self.default_excludes = [
             "__pycache__", "*.pyc", ".git", ".gitignore", ".venv", "venv", "env",
             "node_modules", "*.egg-info", "dist", "build", ".colablink", "connection_*",
-            "colab-workspace"  # Exclude broken legacy directories
+            "colab-workspace", "my-colab-files"  # Exclude broken legacy directories
         ]
         
         # Background sync threads
@@ -970,9 +970,8 @@ Host {self.ssh_alias}
             return
         
         ssh_cmd = self._build_ssh_command()
-        # Debug: print the actual command being run
-        mkdir_cmd = f'mkdir -p "{remote_path}"'
-        print(f"   Debug: Running command: {mkdir_cmd}")
+        # Properly quote the entire command as a single string for bash -lc
+        mkdir_cmd = f'mkdir -p {shlex.quote(remote_path)}'
         
         result = subprocess.run(
             ssh_cmd + ["bash", "-lc", mkdir_cmd],
@@ -981,7 +980,6 @@ Host {self.ssh_alias}
         if result.returncode != 0:
             print(f"   Warning: Could not create remote directory {remote_path}")
             print(f"   Error: {result.stderr.strip()}")
-            print(f"   Debug: Full command was: {' '.join(ssh_cmd + ['bash', '-lc', mkdir_cmd])}")
             if "Permission denied" in result.stderr:
                 print("   This may indicate the Colab runtime needs to be restarted with updated permissions.")
                 print("   Please rerun the ColabRuntime.setup() cell in your Colab notebook.")
