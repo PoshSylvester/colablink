@@ -20,6 +20,7 @@ setup(
     python_requires=">=3.6",
     install_requires=[
         "pyngrok>=5.0.0",
+        "watchdog>=3.0.0",
     ],
     entry_points={
         "console_scripts": [

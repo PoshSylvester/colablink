@@ -27,35 +27,28 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Initialize connection to Colab (automatic sync enabled by default)
+  # Initialize connection to Colab with auto-generated directory
   colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "xxx"}'
   
-  # Custom mount directory
-  colablink init '{"host": "...", "port": "...", "password": "..."}' --mount-dir /custom/path
+  # Initialize with custom directories
+  colablink init '{...}' --remote-dir training --local-dir train_outputs
   
-  # Files generated on Colab appear in ./colab-workspace/ automatically
-  
-  # Manual file management (if auto-sync disabled):
-  colablink upload train.py              # Push file to Colab
-  colablink upload data/                 # Push directory (auto-recursive)
-  colablink download /content/model.pt   # Pull file from Colab
-  colablink download /content/output/    # Pull directory (auto-detected)
-  colablink sync                         # Push entire directory
-  
-  # Execute a Python script on Colab runtime
+  # Execute commands on Colab runtime
   colablink exec python train.py
-  
-  # Check GPU status
   colablink exec nvidia-smi
   
-  # Start interactive shell
-  colablink shell
+  # Manual file transfer
+  colablink upload train.py              # Upload file to Colab
+  colablink upload data/                 # Upload directory
+  colablink download /content/model.pt   # Download file from Colab
+  colablink sync                         # Sync entire directory
   
-  # Check connection status
+  # Interactive shell and port forwarding
+  colablink shell                        # Interactive shell on Colab
+  colablink forward 8888                 # Forward Jupyter port
+  
+  # Check status
   colablink status
-  
-  # Forward Jupyter port to local
-  colablink forward 8888
 """,
     )
 
@@ -65,6 +58,11 @@ Examples:
         action="version",
         version=f"colablink {__version__}",
         help="Show the installed ColabLink version and exit.",
+    )
+    parser.add_argument(
+        "--profile",
+        default="default",
+        help="Name of the ColabLink profile to use (default: default).",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
@@ -76,21 +74,26 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Initialize connection to Colab runtime and set up automatic file sync.",
         epilog="""Examples:
-  colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "mypass"}'
-  colablink init '{...}' --mount-dir ./my-colab-files
-""",
+        colablink init '{"host": "...", "port": "...", "username": "...", "password": "..."}'  # Auto-generates connection_xxxxxx
+        colablink init '{...}' --remote-dir training --local-dir train_outputs --profile exp1
+        colablink init '{...}' --remote-dir results --remote-root /content/workspace --profile exp2
+        """,
     )
     init_parser.add_argument(
         "config", help="Connection config JSON string from Colab output"
     )
     init_parser.add_argument(
-        "--mount-dir",
-        default="./colab-workspace",
-        help="Local directory to mount Colab files (default: ./colab-workspace)",
+        "--remote-dir",
+        help="Directory name on Colab for this connection's outputs (default: connection_<random>)",
     )
     init_parser.add_argument(
-        "--remote-dir",
-        help="Remote working directory inside Colab (default: workspace reported by runtime)",
+        "--local-dir",
+        help="Local directory name for outputs (default: same as --remote-dir)",
+    )
+    init_parser.add_argument(
+        "--remote-root",
+        default="/content",
+        help="Base directory on Colab (default: /content)",
     )
 
     # Exec command
@@ -100,12 +103,12 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Execute any command on Google Colab runtime with real-time output streaming.",
         epilog="""Common commands:
-  colablink exec python train.py          # Run Python script
-  colablink exec nvidia-smi                # Check GPU
-  colablink exec pip install torch         # Install packages
-  colablink exec "ls -la /content"         # Shell commands
-  
-Output streams in real-time to your terminal.""",
+        colablink exec python train.py          # Run Python script
+        colablink exec nvidia-smi                # Check GPU
+        colablink exec pip install torch         # Install packages
+        colablink exec "ls -la /content"         # Shell commands
+        
+        Output streams in real-time to your terminal.""",
     )
     exec_parser.add_argument(
         "cmd", nargs=argparse.REMAINDER, help="Command to execute on Colab"
@@ -115,7 +118,7 @@ Output streams in real-time to your terminal.""",
     subparsers.add_parser(
         "shell",
         help="Start interactive shell on Colab",
-        description='Start an interactive bash shell on Colab with full GPU access. Type "exit" to return to local shell.',
+        description='Start an interactive bash shell on Colab with full access. Type "exit" to return to local shell.',
     )
 
     # Status command
@@ -132,9 +135,9 @@ Output streams in real-time to your terminal.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Forward a port from Colab to your local machine.",
         epilog="""Examples:
-  colablink forward 8888                   # Jupyter
-  colablink forward 6006                   # TensorBoard
-  colablink forward 5000 --local-port 3000 # Custom mapping""",
+        colablink forward 8888                   # Jupyter
+        colablink forward 6006                   # TensorBoard
+        colablink forward 5000 --local-port 3000 # Custom mapping""",
     )
     p.add_argument("port", type=int, help="Remote port on Colab to forward")
     p.add_argument(
@@ -148,9 +151,9 @@ Output streams in real-time to your terminal.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Upload files or directories to Colab.\nDirectories are automatically uploaded recursively.",
         epilog="""Examples:
-  colablink upload train.py                # Single file
-  colablink upload data/                   # Directory (auto-recursive)
-  colablink upload model.py -d /content/models/""",
+        colablink upload train.py                # Single file
+        colablink upload data/                   # Directory (auto-recursive)
+        colablink upload model.py -d /content/models/""",
     )
     p.add_argument("source", help="Local file or directory to upload")
     p.add_argument(
@@ -167,9 +170,9 @@ Output streams in real-time to your terminal.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Download files or directories from Colab.\nDirectories are automatically detected.",
         epilog="""Examples:
-  colablink download /content/model.pt               # Single file
-  colablink download /content/output/                # Directory
-  colablink download /content/data/ -d ./local_data/""",
+        colablink download /content/model.pt               # Single file
+        colablink download /content/output/                # Directory
+        colablink download /content/data/ -d ./local_data/""",
     )
     p.add_argument("source", help="Remote file or directory path on Colab")
     p.add_argument(
@@ -186,6 +189,35 @@ Output streams in real-time to your terminal.""",
         help="Overwrite existing local files when downloading",
     )
 
+    # Watch command
+    p = subparsers.add_parser(
+        "watch",
+        help="Run background sync agent",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Keep local source ↔ remote outputs synchronized until interrupted.",
+        epilog="""Example:
+        colablink watch --profile connection_x
+        colablink watch --interval 0.5 --debounce 0.1  # Near-instant sync
+        """,
+    )
+    p.add_argument(
+        "--interval",
+        type=float,
+        default=0.5,
+        help="Seconds between remote→local sync passes when sshfs is unavailable (default: 0.5).",
+    )
+    p.add_argument(
+        "--debounce",
+        type=float,
+        default=0.1,
+        help="Debounce time for local file changes before syncing (default: 0.1).",
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing local files when downloading",
+    )
+
     # Sync command
     p = subparsers.add_parser(
         "sync",
@@ -193,8 +225,8 @@ Output streams in real-time to your terminal.""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Sync entire directory to Colab.\nAutomatically excludes: .git, __pycache__, venv, node_modules, *.pyc",
         epilog="""Examples:
-  colablink sync                  # Sync current directory
-  colablink sync -d /path/to/project""",
+        colablink sync                  # Sync current directory
+        colablink sync -d /path/to/project""",
     )
     p.add_argument(
         "--directory", "-d", help="Directory to sync (default: current directory)"
@@ -223,35 +255,62 @@ Output streams in real-time to your terminal.""",
         parser.print_help()
         return 0
 
-    # Create client with mount directory (for init command)
-    local_mount_dir = None
-    if args.command == "init":
-        local_mount_dir = args.mount_dir
-
-    client = LocalClient(local_mount_dir=local_mount_dir)
+    profile = getattr(args, "profile", "default")
 
     if args.command == "init":
         try:
             config = json.loads(args.config)
-            client.initialize(config, remote_workdir=args.remote_dir)
         except json.JSONDecodeError:
             print("Error: Invalid JSON config string")
             return 1
 
-    elif args.command == "exec":
+        # Generate remote directory name if not provided
+        if not args.remote_dir:
+            import random
+            import string
+            random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+            remote_dir_name = f"connection_{random_suffix}"
+        else:
+            remote_dir_name = args.remote_dir
+            
+        # Set local directory name (defaults to remote directory name)
+        local_dir_name = args.local_dir or remote_dir_name
+
+        client = LocalClient(profile=profile)
+        ok = client.initialize(
+            config,
+            remote_dir=remote_dir_name,
+            local_dir=local_dir_name,
+            remote_root=args.remote_root,  # Pass remote_root to client instead
+        )
+        return 0 if ok else 1
+
+    # Create client with sync intervals if specified
+    if args.command == "watch":
+        client = LocalClient(
+            profile=profile,
+            source_sync_debounce=getattr(args, "debounce", 0.1),
+            remote_sync_interval=getattr(args, "interval", 0.5),
+        )
+        return client.watch(interval=args.interval)
+    
+    client = LocalClient(profile=profile)
+
+    if args.command == "exec":
         if not args.cmd:
             print("Error: No command specified")
             return 1
 
         return client.execute(args.cmd)
 
-    elif args.command == "shell":
+    if args.command == "shell":
         return client.shell()
 
-    elif args.command == "status":
+    if args.command == "status":
         client.status()
+        return 0
 
-    elif args.command == "forward":
+    if args.command == "forward":
         client.forward_port(args.port, args.local_port)
         print("Press Ctrl+C to stop port forwarding...")
         try:
@@ -261,13 +320,14 @@ Output streams in real-time to your terminal.""",
                 time.sleep(1)
         except KeyboardInterrupt:
             print("\nStopping port forwarding...")
+        return 0
 
-    elif args.command == "upload":
+    if args.command == "upload":
         return client.upload(
             args.source, destination=args.destination, recursive=args.recursive
         )
 
-    elif args.command == "download":
+    if args.command == "download":
         return client.download(
             args.source,
             destination=args.destination,
@@ -275,15 +335,16 @@ Output streams in real-time to your terminal.""",
             overwrite=args.force,
         )
 
-    elif args.command == "sync":
+    if args.command == "sync":
         return client.sync(
             directory=args.directory,
             dry_run=args.dry_run,
             progress=args.progress,
         )
 
-    elif args.command == "disconnect":
+    if args.command == "disconnect":
         client.disconnect()
+        return 0
 
     return 0
 

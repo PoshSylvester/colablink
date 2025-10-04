@@ -37,7 +37,6 @@ class ColabRuntime:
         self.keep_alive_thread = None
         self.username = self._sanitize_username(username)
         self.session_id = None
-        self.workspace_root = None
 
     def setup(self):
         """
@@ -211,11 +210,10 @@ class ColabRuntime:
     def _setup_ssh_server(self):
         """Configure and start SSH server."""
         self.session_id = uuid.uuid4().hex[:8]
-        self.workspace_root = f"/content/colablink_{self.session_id}"
 
         self._ensure_user()
         self._configure_ssh()
-        self._prepare_workspace()
+        # NOTE: No workspace creation - connection directories are created by client during init
 
         # Setup environment for SSH sessions (GPU/CUDA access)
         print("   Configuring environment for GPU access...")
@@ -305,24 +303,6 @@ export CUDA_HOME=/usr/local/cuda
 
         base_config_path.write_text("\n".join(updated_lines) + "\n")
 
-    def _prepare_workspace(self):
-        """Create remote workspace owned by the dedicated user."""
-        print("   Preparing remote workspace directory...")
-        workspace_path = Path(self.workspace_root)
-        workspace_path.parent.mkdir(parents=True, exist_ok=True)
-
-        result = subprocess.run(
-            ["mkdir", "-p", str(workspace_path)], capture_output=True, text=True
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to create workspace: {result.stderr}")
-
-        subprocess.run(
-            ["chown", "-R", f"{self.username}:{self.username}", str(workspace_path)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
     def _create_tunnel(self):
         """Create ngrok tunnel for SSH access."""
         if not self.ngrok_token:
@@ -351,7 +331,6 @@ export CUDA_HOME=/usr/local/cuda
             "port": port,
             "password": self.password,
             "username": self.username,
-            "workspace": self.workspace_root,
         }
 
         print(f"   Tunnel created: {host}:{port}")
@@ -390,7 +369,6 @@ export CUDA_HOME=/usr/local/cuda
         print(f"  Port: {self.connection_info['port']}")
         print(f"  User: {self.connection_info['username']}")
         print(f"  Password: {self.connection_info['password']}")
-        print(f"  Remote workspace: {self.connection_info['workspace']}")
 
         print("\n" + "-" * 70)
         print("CONNECT FROM YOUR LOCAL MACHINE:")
@@ -402,8 +380,8 @@ export CUDA_HOME=/usr/local/cuda
 
         print("\n2. Initialize connection (copy-paste this command):")
         print(f"\n   colablink init '{config_json}'")
-        print("\n   # Optional: mirror Colab files to a custom path")
-        print(f"   colablink init '{config_json}' --mount-dir ./my-colab-files")
+        print("\n   # Optional: specify custom directories")
+        print(f"   colablink init '{config_json}' --remote-root /content --remote-dir training --local-dir train_outputs")
 
         print("\n3. Execute commands on Colab runtime from your local terminal:")
         print("   colablink exec python train.py")
@@ -414,10 +392,9 @@ export CUDA_HOME=/usr/local/cuda
         print("   python train.py  # Runs on Colab runtime automatically")
 
         print("\nOptional flags:")
-        print("   --mount-dir ./my-colab-files        # Local mirror of Colab workspace")
-        print(
-            "   --remote-dir /content/colablink_xxxx/outputs  # Change remote working directory"
-        )
+        print("   --remote-dir training                   # Directory name on Colab for outputs")
+        print("   --local-dir train_outputs              # Local directory name for outputs")
+        print("   --remote-root /content                 # Base directory on Colab (default)")
 
         print("\n" + "=" * 70)
         print("\nKeep this cell running to maintain the connection!")
