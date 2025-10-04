@@ -244,21 +244,24 @@ export CUDA_HOME=/usr/local/cuda
         if result.returncode != 0:
             raise RuntimeError(f"Failed to start SSH server: {result.stderr}")
 
-        # Grant colablink user write access to /content
-        print("   Configuring /content permissions...")
+        # Grant colablink user write access to remote root
+        print(f"   Configuring {self.remote_root} permissions...")
         try:
-            # Change ownership of /content to allow colablink user to write
+            # Ensure remote root directory exists
+            os.makedirs(self.remote_root, exist_ok=True)
+            
+            # Change ownership of remote root to allow colablink user to write
             subprocess.run(
-                ["chown", "-R", f"{self.username}:root", "/content"],
+                ["chown", "-R", f"{self.username}:root", self.remote_root],
                 capture_output=True, text=True
             )
-            # Ensure /content is writable by the user
+            # Ensure remote root is writable by the user
             subprocess.run(
-                ["chmod", "755", "/content"],
+                ["chmod", "755", self.remote_root],
                 capture_output=True, text=True
             )
         except Exception as e:
-            print(f"   Warning: Could not set /content permissions: {e}")
+            print(f"   Warning: Could not set {self.remote_root} permissions: {e}")
 
         print("   SSH server running on port 22")
 
