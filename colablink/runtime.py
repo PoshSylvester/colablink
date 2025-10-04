@@ -399,12 +399,12 @@ export CUDA_HOME=/usr/local/cuda
 
         print("\n2. Initialize connection (copy-paste this command):")
         print(f"\n   colablink init '{config_json}'")
-        print("\n   # Optional: specify custom directories")
-        print(f"   colablink init '{config_json}' --remote-root /content --remote-dir training --local-dir train_outputs")
+        print("\n   # Optional: specify custom directories and profiles")
+        print(f"   colablink --profile train init '{config_json}' --remote-dir training --local-dir train_outputs")
 
         print("\n3. Execute commands on Colab runtime from your local terminal:")
         print("   colablink exec python train.py")
-        print("   colablink exec nvidia-smi")
+        print("   colablink --profile train exec nvidia-smi")
 
         print("\n4. Or use shell wrapper for transparent execution:")
         print("   colablink shell")
@@ -414,6 +414,7 @@ export CUDA_HOME=/usr/local/cuda
         print("   --remote-dir training                   # Directory name on Colab for outputs")
         print("   --local-dir train_outputs              # Local directory name for outputs")
         print("   --remote-root /content                 # Base directory on Colab (default)")
+        print("   --profile train                        # Profile name for this connection")
 
         print("\n" + "=" * 70)
         print("\nKeep this cell running to maintain the connection!")
