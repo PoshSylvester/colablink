@@ -971,20 +971,30 @@ Host {self.ssh_alias}
             print(f"   Warning: Empty remote path provided to _ensure_remote_directory")
             return
         
-        ssh_cmd = self._build_ssh_command()
-        # Use proper shell quoting for the mkdir command
-        mkdir_cmd = f'mkdir -p {shlex.quote(remote_path)}'
-        
-        result = subprocess.run(
-            ssh_cmd + ["bash", "-lc", mkdir_cmd],
+        # Test the connection first to make sure we can reach the server
+        test_result = subprocess.run(
+            self._build_ssh_command() + ["echo", "test"],
             capture_output=True, text=True
         )
+        if test_result.returncode != 0:
+            print(f"   Warning: Cannot reach remote server: {test_result.stderr.strip()}")
+            return
+        
+        # Use a simple approach - execute the mkdir command directly
+        ssh_cmd = self._build_ssh_command()
+        result = subprocess.run(
+            ssh_cmd + ["mkdir", "-p", remote_path],
+            capture_output=True, text=True
+        )
+        
         if result.returncode != 0:
             print(f"   Warning: Could not create remote directory {remote_path}")
             print(f"   Error: {result.stderr.strip()}")
             if "Permission denied" in result.stderr:
                 print("   This may indicate the Colab runtime needs to be restarted with updated permissions.")
                 print("   Please rerun the ColabRuntime.setup() cell in your Colab notebook.")
+        else:
+            print(f"   Successfully created remote directory: {remote_path}")
 
     def _clean_port_forwards(self):
         """Remove finished port forward processes."""
