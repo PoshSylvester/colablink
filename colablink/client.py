@@ -841,6 +841,10 @@ Host {self.ssh_alias}
                 if item.is_dir() and item.name.startswith("connection_"):
                     if item.name not in excludes:
                         excludes.append(item.name)
+        except (OSError, IOError) as e:
+            # Handle broken symlinks or I/O errors gracefully
+            print(f"   Warning: Could not scan project directory: {e}")
+            print("   Continuing with sync using default exclusions...")
         except Exception:
             pass
 
@@ -894,7 +898,7 @@ Host {self.ssh_alias}
 
         rsync_cmd = [
             "sshpass", "-p", self.config["password"],
-            "rsync", "-az"
+            "rsync", "-az", "--safe-links"  # Skip broken symlinks
         ]
 
         if delete:
@@ -960,11 +964,15 @@ Host {self.ssh_alias}
 
     def _ensure_remote_directory(self, remote_path: str):
         """Create a remote directory if it does not exist."""
-        if not remote_path:
+        if not remote_path or not remote_path.strip():
+            print(f"   Warning: Empty remote path provided to _ensure_remote_directory")
             return
+        
         ssh_cmd = self._build_ssh_command()
+        # Use double quotes around the entire command to handle spaces and special chars
+        mkdir_cmd = f'mkdir -p "{remote_path}"'
         result = subprocess.run(
-            ssh_cmd + ["bash", "-lc", f"mkdir -p {shlex.quote(remote_path)}"],
+            ssh_cmd + ["bash", "-lc", mkdir_cmd],
             capture_output=True, text=True
         )
         if result.returncode != 0:
