@@ -91,7 +91,8 @@ class LocalClient:
         # Sync exclusions
         self.default_excludes = [
             "__pycache__", "*.pyc", ".git", ".gitignore", ".venv", "venv", "env",
-            "node_modules", "*.egg-info", "dist", "build", ".colablink", "connection_*"
+            "node_modules", "*.egg-info", "dist", "build", ".colablink", "connection_*",
+            "colab-workspace"  # Exclude broken legacy directories
         ]
         
         # Background sync threads
@@ -149,21 +150,21 @@ class LocalClient:
         os.makedirs(self.config_dir, exist_ok=True)
         self._save_config()
         self._setup_ssh_config()
-        
-        # Create connection directory on Colab
-        print(f"   Creating connection directory on Colab: {self.remote_output_dir}")
-        self._ensure_remote_directory(self.remote_output_dir)
 
-        # Initial sync of source files
-        self._sync_local_source_to_remote(initial=True)
-
-        # Test connection
+        # Test connection FIRST before any file operations
         print("\nTesting connection...")
         if not self._test_connection():
             print("Connection failed. Please check the connection details.")
             return False
 
         print("Connection successful!")
+
+        # Create connection directory on Colab
+        print(f"   Creating connection directory on Colab: {self.remote_output_dir}")
+        self._ensure_remote_directory(self.remote_output_dir)
+
+        # Initial sync of source files
+        self._sync_local_source_to_remote(initial=True)
 
         # Setup file sync
         self._setup_connection_mount()
@@ -969,8 +970,10 @@ Host {self.ssh_alias}
             return
         
         ssh_cmd = self._build_ssh_command()
-        # Use double quotes around the entire command to handle spaces and special chars
+        # Debug: print the actual command being run
         mkdir_cmd = f'mkdir -p "{remote_path}"'
+        print(f"   Debug: Running command: {mkdir_cmd}")
+        
         result = subprocess.run(
             ssh_cmd + ["bash", "-lc", mkdir_cmd],
             capture_output=True, text=True
@@ -978,6 +981,7 @@ Host {self.ssh_alias}
         if result.returncode != 0:
             print(f"   Warning: Could not create remote directory {remote_path}")
             print(f"   Error: {result.stderr.strip()}")
+            print(f"   Debug: Full command was: {' '.join(ssh_cmd + ['bash', '-lc', mkdir_cmd])}")
             if "Permission denied" in result.stderr:
                 print("   This may indicate the Colab runtime needs to be restarted with updated permissions.")
                 print("   Please rerun the ColabRuntime.setup() cell in your Colab notebook.")
