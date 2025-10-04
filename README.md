@@ -66,11 +66,24 @@ ngrok_token = getpass("Enter your ngrok authtoken: ")
 runtime = ColabRuntime(
     password="secure_password_123",
     ngrok_token=ngrok_token,
-    username="colablink"  # Optional: customize username
+    username="colablink",  # Optional: customize username
+    remote_root="/content"  # Optional: customize base directory
 )
 
 # Setup and display connection info
 connection_info = runtime.setup()
+
+# Create connection directories for your projects
+main_dir = runtime.create_connection_dir("main_project")
+experiment_dir = runtime.create_connection_dir("experiments")
+
+# Set default connection directory
+connection_info["remote_output_dir"] = main_dir
+
+# Display connection info for local machine
+import json
+print("Connection info:")
+print(json.dumps(connection_info, indent=2))
 
 # Keep the runtime alive
 runtime.keep_alive()
@@ -78,18 +91,14 @@ runtime.keep_alive()
 
 ### 3. Connect from Local Machine
 
-Copy the connection command from Colab output:
+Copy the connection JSON from Colab output:
 
 ```bash
-# Basic connection (auto-generates connection_xxxxxx directory)
-colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "secure_password_123", "username": "colablink"}'
+# Basic connection using the connection info from Colab
+colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "secure_password_123", "username": "colablink", "remote_root": "/content", "remote_output_dir": "/content/main_project"}'
 
-# Full options
-colablink init '{"host": "...", "port": "...", "password": "...", "username": "..."}' \
-  --remote-dir training \           # Directory name on Colab for outputs (default: connection_xxxxxx)
-  --local-dir train_outputs \       # Local directory name for outputs (default: same as remote-dir)  
-  --remote-root /content \          # Base directory on Colab (default: /content)
-  --profile experiment1             # Profile name for this connection (default: default)
+# With custom local directory name
+colablink init '{...}' --local-dir my_outputs --profile main
 ```
 
 ### 4. Start Using
@@ -142,21 +151,21 @@ ls connection_abc123/  # See models, outputs, logs, etc.
 Connect multiple local sessions to the same Colab runtime with isolated output directories:
 
 ```bash
-# Connection 1: Training experiments
-colablink init '{...}' --remote-dir training --local-dir train_outputs --profile exp1
+# Connection 1: Main project
+colablink init '{...}' --local-dir main_outputs --profile main
 
-# Connection 2: Data processing  
-colablink init '{...}' --remote-dir processing --local-dir proc_outputs --profile exp2
+# Connection 2: Experiments (using different remote_output_dir)  
+colablink init '{"host": "...", "remote_output_dir": "/content/experiments", ...}' --local-dir exp_outputs --profile exp
 
 # Use specific connections
-colablink exec --profile exp1 python train.py
-colablink exec --profile exp2 python process_data.py
-colablink watch --profile exp1  # Keep exp1 synced
+colablink exec --profile main python train.py
+colablink exec --profile exp python experiment.py
+colablink watch --profile main  # Keep main synced
 ```
 
 Each connection maintains its own:
-- Local output directory (`train_outputs/`, `proc_outputs/`)
-- Remote output directory (`/content/training/`, `/content/processing/`)
+- Local output directory (`main_outputs/`, `exp_outputs/`)
+- Remote output directory (`/content/main_project/`, `/content/experiments/`)
 - SSH configuration and sync state
 
 ## File Synchronization
@@ -197,8 +206,8 @@ colablink watch --debounce 0.5 --interval 2.0
 ### Machine Learning Training
 
 ```bash
-# Setup
-colablink init '{...}' --remote-dir ml_training --profile train
+# Setup (connection directories created on Colab during runtime setup)
+colablink init '{...}' --local-dir ml_training --profile train
 
 # Train model on GPU
 colablink exec --profile train python train_model.py
@@ -245,8 +254,7 @@ from colablink import LocalClient
 # Programmatic usage
 client = LocalClient(profile="experiment1")
 client.initialize(
-    connection_info,
-    remote_dir="outputs",
+    connection_info,  # Includes remote_output_dir from runtime
     local_dir="results"
 )
 
@@ -268,11 +276,18 @@ SSH configuration is automatically added to `~/.ssh/config`.
 
 ### Custom Remote Root
 
-By default, files sync to `/content/` on Colab. You can customize this:
+By default, connection directories are created under `/content/` on Colab. You can customize this during runtime setup:
 
-```bash
-colablink init '{...}' --remote-root /content/workspace --remote-dir experiment1
-# Files sync to: /content/workspace/experiment1/
+```python
+# In Colab notebook
+runtime = ColabRuntime(
+    password="password",
+    ngrok_token="token",
+    remote_root="/content/workspace"  # Custom base directory
+)
+connection_info = runtime.setup()
+connection_dir = runtime.create_connection_dir("experiment1")
+# Creates: /content/workspace/experiment1/
 ```
 
 ## Troubleshooting
@@ -284,8 +299,8 @@ colablink init '{...}' --remote-root /content/workspace --remote-dir experiment1
 colablink status
 
 # Reconnect if Colab session expired
-# 1. Rerun the Colab setup cell
-# 2. Copy the new connection command
+# 1. Rerun the Colab setup cell (this recreates connection directories)
+# 2. Copy the new connection JSON
 # 3. Run: colablink init '{new_connection_info}'
 ```
 

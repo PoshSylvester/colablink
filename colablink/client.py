@@ -106,18 +106,14 @@ class LocalClient:
     def initialize(
         self,
         connection_info: Dict,
-        remote_dir: str,
         local_dir: str,
-        remote_root: str = "/content",
     ):
         """
         Initialize connection to Colab runtime.
         
         Args:
-            connection_info: Connection details from Colab runtime
-            remote_dir: Directory name on Colab for this connection's outputs  
+            connection_info: Connection details from Colab runtime (includes remote paths)
             local_dir: Local directory name for outputs
-            remote_root: Base directory on Colab
         """
         print("Initializing connection to Colab runtime...")
 
@@ -126,9 +122,16 @@ class LocalClient:
         # Setup paths
         self.project_root = Path(os.getcwd()).resolve()
         self.local_output_dir = self.project_root / local_dir
-        self.remote_root = remote_root
-        self.remote_output_dir = f"{remote_root.rstrip('/')}/{remote_dir}"
-        self.connection_id = remote_dir
+        
+        # Get remote paths from connection info
+        self.remote_root = connection_info.get("remote_root", "/content")
+        self.remote_output_dir = connection_info.get("remote_output_dir")
+        
+        if not self.remote_output_dir:
+            print("Error: No remote output directory provided in connection info")
+            return False
+            
+        self.connection_id = Path(self.remote_output_dir).name
 
         # Create local output directory
         self.local_output_dir.mkdir(exist_ok=True)
@@ -150,7 +153,7 @@ class LocalClient:
         os.makedirs(self.config_dir, exist_ok=True)
         self._save_config()
         self._setup_ssh_config()
-
+        
         # Test connection FIRST before any file operations
         print("\nTesting connection...")
         if not self._test_connection():
@@ -158,10 +161,7 @@ class LocalClient:
             return False
 
         print("Connection successful!")
-
-        # Create connection directory on Colab
-        print(f"   Creating connection directory on Colab: {self.remote_output_dir}")
-        self._ensure_remote_directory(self.remote_output_dir)
+        print(f"   Remote output directory: {self.remote_output_dir}")
 
         # Initial sync of source files
         self._sync_local_source_to_remote(initial=True)
@@ -241,9 +241,6 @@ class LocalClient:
 
         # Sync local changes before execution
         self._sync_local_source_to_remote()
-
-        # Ensure remote directory exists
-        self._ensure_remote_directory(remote_cwd)
 
         # Build SSH command
         ssh_cmd = self._build_ssh_command()
@@ -962,27 +959,6 @@ Host {self.ssh_alias}
         """Return user@host string for SSH commands."""
         username = self.config.get("username", "root")
         return f"{username}@{self.config['host']}"
-
-    def _ensure_remote_directory(self, remote_path: str):
-        """Create a remote directory if it does not exist."""
-        if not remote_path or not remote_path.strip():
-            print(f"   Warning: Empty remote path provided to _ensure_remote_directory")
-            return
-        
-        ssh_cmd = self._build_ssh_command()
-        # Properly quote the entire command as a single string for bash -lc
-        mkdir_cmd = f'mkdir -p {shlex.quote(remote_path)}'
-        
-        result = subprocess.run(
-            ssh_cmd + ["bash", "-lc", mkdir_cmd],
-            capture_output=True, text=True
-        )
-        if result.returncode != 0:
-            print(f"   Warning: Could not create remote directory {remote_path}")
-            print(f"   Error: {result.stderr.strip()}")
-            if "Permission denied" in result.stderr:
-                print("   This may indicate the Colab runtime needs to be restarted with updated permissions.")
-                print("   Please rerun the ColabRuntime.setup() cell in your Colab notebook.")
 
     def _clean_port_forwards(self):
         """Remove finished port forward processes."""
