@@ -75,16 +75,25 @@ Examples:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Initialize connection to Colab runtime and set up automatic file sync.",
         epilog="""Examples:
-        colablink init '{"host": "...", "port": "...", "username": "...", "password": "...", "remote_output_dir": "/content/connection_abc123"}'
-        colablink init '{...}' --local-dir train_outputs --profile exp1
+        colablink init '{"host": "...", "port": "...", "username": "...", "password": "...", "remote_root": "/content"}'
+        colablink init '{...}' --remote-dir training --local-dir train_outputs --profile exp1
+        colablink init '{...}' --remote-root /content/workspace --remote-dir experiment1
         """,
     )
     init_parser.add_argument(
         "config", help="Connection config JSON string from Colab output"
     )
     init_parser.add_argument(
+        "--remote-dir",
+        help="Directory name on Colab for this connection's outputs (default: connection_<random>)",
+    )
+    init_parser.add_argument(
         "--local-dir",
-        help="Local directory name for outputs (default: connection_<random>)",
+        help="Local directory name for outputs (default: same as --remote-dir)",
+    )
+    init_parser.add_argument(
+        "--remote-root",
+        help="Base directory on Colab (default: from connection info or /content)",
     )
 
     # Exec command
@@ -255,22 +264,25 @@ Examples:
             print("Error: Invalid JSON config string")
             return 1
 
-        # Check if config includes remote_output_dir (new format)
-        if "remote_output_dir" not in config:
-            print("Error: Connection config missing remote_output_dir.")
-            print("Please ensure you're using the latest ColabRuntime setup that creates connection directories.")
-            return 1
-            
-        # Determine local directory name
-        if args.local_dir:
-            local_dir_name = args.local_dir
+        # Generate remote directory name if not provided
+        if not args.remote_dir:
+            import random
+            import string
+            random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+            remote_dir_name = f"connection_{random_suffix}"
         else:
-            # Default to the remote connection directory name
-            remote_output_dir = config["remote_output_dir"]
-            local_dir_name = Path(remote_output_dir).name
+            remote_dir_name = args.remote_dir
+            
+        # Set local directory name (defaults to remote directory name)
+        local_dir_name = args.local_dir or remote_dir_name
         
         client = LocalClient(profile=profile)
-        ok = client.initialize(config, local_dir=local_dir_name)
+        ok = client.initialize(
+            config,
+            remote_dir=remote_dir_name,
+            local_dir=local_dir_name,
+            remote_root=args.remote_root,
+        )
         return 0 if ok else 1
 
     # Create client with sync intervals if specified

@@ -39,7 +39,6 @@ class ColabRuntime:
         self.username = self._sanitize_username(username)
         self.session_id = None
         self.remote_root = remote_root
-        self.connection_dirs = []  # Track created connection directories
 
     def setup(self):
         """
@@ -351,38 +350,9 @@ export CUDA_HOME=/usr/local/cuda
             "password": self.password,
             "username": self.username,
             "remote_root": self.remote_root,
-            "connection_dirs": self.connection_dirs,  # List of created connection directories
         }
 
         print(f"   Tunnel created: {host}:{port}")
-
-    def create_connection_dir(self, connection_name: str = None) -> str:
-        """
-        Create a connection directory on Colab.
-        
-        Args:
-            connection_name: Name for the connection directory (auto-generated if None)
-            
-        Returns:
-            The full path of the created connection directory
-        """
-        if connection_name is None:
-            import random
-            import string
-            random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-            connection_name = f"connection_{random_suffix}"
-        
-        connection_path = f"{self.remote_root.rstrip('/')}/{connection_name}"
-        
-        try:
-            # Create the directory
-            os.makedirs(connection_path, exist_ok=True)
-            self.connection_dirs.append(connection_path)
-            print(f"   Created connection directory: {connection_path}")
-            return connection_path
-        except Exception as e:
-            print(f"   Warning: Could not create connection directory {connection_path}: {e}")
-            return connection_path  # Return path anyway, client can handle the error
 
     def _generate_password(self):
         """Generate a random secure password."""

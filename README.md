@@ -73,13 +73,6 @@ runtime = ColabRuntime(
 # Setup and display connection info
 connection_info = runtime.setup()
 
-# Create connection directories for your projects
-main_dir = runtime.create_connection_dir("main_project")
-experiment_dir = runtime.create_connection_dir("experiments")
-
-# Set default connection directory
-connection_info["remote_output_dir"] = main_dir
-
 # Display connection info for local machine
 import json
 print("Connection info:")
@@ -94,11 +87,12 @@ runtime.keep_alive()
 Copy the connection JSON from Colab output:
 
 ```bash
-# Basic connection using the connection info from Colab
-colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "secure_password_123", "username": "colablink", "remote_root": "/content", "remote_output_dir": "/content/main_project"}'
+# Basic connection (auto-generates connection_xxxxxx directory)
+colablink init '{"host": "0.tcp.ngrok.io", "port": "12345", "password": "secure_password_123", "username": "colablink", "remote_root": "/content"}'
 
-# With custom local directory name
-colablink init '{...}' --local-dir my_outputs --profile main
+# Custom connection directories for multiple projects
+colablink init '{...}' --remote-dir training --local-dir train_outputs --profile train
+colablink init '{...}' --remote-dir experiments --local-dir exp_outputs --profile exp
 ```
 
 ### 4. Start Using
@@ -151,21 +145,21 @@ ls connection_abc123/  # See models, outputs, logs, etc.
 Connect multiple local sessions to the same Colab runtime with isolated output directories:
 
 ```bash
-# Connection 1: Main project
-colablink init '{...}' --local-dir main_outputs --profile main
+# Connection 1: Training project
+colablink init '{...}' --remote-dir training --local-dir train_outputs --profile train
 
-# Connection 2: Experiments (using different remote_output_dir)  
-colablink init '{"host": "...", "remote_output_dir": "/content/experiments", ...}' --local-dir exp_outputs --profile exp
+# Connection 2: Experiments project
+colablink init '{...}' --remote-dir experiments --local-dir exp_outputs --profile exp
 
 # Use specific connections
-colablink exec --profile main python train.py
+colablink exec --profile train python train.py
 colablink exec --profile exp python experiment.py
-colablink watch --profile main  # Keep main synced
+colablink watch --profile train  # Keep training synced
 ```
 
 Each connection maintains its own:
-- Local output directory (`main_outputs/`, `exp_outputs/`)
-- Remote output directory (`/content/main_project/`, `/content/experiments/`)
+- Local output directory (`train_outputs/`, `exp_outputs/`)
+- Remote output directory (`/content/training/`, `/content/experiments/`)
 - SSH configuration and sync state
 
 ## File Synchronization
@@ -206,8 +200,8 @@ colablink watch --debounce 0.5 --interval 2.0
 ### Machine Learning Training
 
 ```bash
-# Setup (connection directories created on Colab during runtime setup)
-colablink init '{...}' --local-dir ml_training --profile train
+# Setup (connection directories created during local init)
+colablink init '{...}' --remote-dir ml_training --local-dir ml_training --profile train
 
 # Train model on GPU
 colablink exec --profile train python train_model.py
@@ -254,7 +248,8 @@ from colablink import LocalClient
 # Programmatic usage
 client = LocalClient(profile="experiment1")
 client.initialize(
-    connection_info,  # Includes remote_output_dir from runtime
+    connection_info,  # Includes remote_root from runtime
+    remote_dir="outputs",
     local_dir="results"
 )
 
@@ -286,7 +281,9 @@ runtime = ColabRuntime(
     remote_root="/content/workspace"  # Custom base directory
 )
 connection_info = runtime.setup()
-connection_dir = runtime.create_connection_dir("experiment1")
+
+# Then on local machine
+colablink init '{connection_info}' --remote-dir experiment1
 # Creates: /content/workspace/experiment1/
 ```
 
@@ -299,9 +296,9 @@ connection_dir = runtime.create_connection_dir("experiment1")
 colablink status
 
 # Reconnect if Colab session expired
-# 1. Rerun the Colab setup cell (this recreates connection directories)
+# 1. Rerun the Colab setup cell
 # 2. Copy the new connection JSON
-# 3. Run: colablink init '{new_connection_info}'
+# 3. Run: colablink init '{new_connection_info}' --remote-dir your_project
 ```
 
 ### Missing Dependencies
